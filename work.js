@@ -1,6 +1,36 @@
 // ---------- RENDER: WORK VIEW ----------
 let workSearch = '', workCategoryFilter = '';
 
+// สถานะ "พักไว้" (Hold) + การพับ/แสดงส่วน "พักไว้" และ "เสร็จแล้ว" (จำค่าไว้ในเบราว์เซอร์)
+const HOLD = 'พักไว้';
+const WORK_SHOW_KEY = 'dowork_work_sections';
+let workShow = { hold:false, done:false };
+try{ Object.assign(workShow, JSON.parse(localStorage.getItem(WORK_SHOW_KEY) || '{}')); }catch(e){}
+function saveWorkShow(){ try{ localStorage.setItem(WORK_SHOW_KEY, JSON.stringify(workShow)); }catch(e){} }
+
+STATUS_CLASS[HOLD] = 'status-hold';
+
+// เพิ่มปุ่มสถานะ "พักไว้" ใน modal งาน
+(function(){
+  const g = document.getElementById('tm-status-group');
+  if(g && !g.querySelector('[data-val="'+HOLD+'"]')){
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'sel-status'; b.dataset.val = HOLD; b.textContent = HOLD;
+    const doing = g.querySelector('[data-val="กำลังทำ"]');
+    if(doing) doing.after(b); else g.appendChild(b);
+  }
+})();
+
+// หน้า Home ไม่นับงานที่พักไว้ (สถิติ, ใกล้ครบกำหนด, Impact สูง ฯลฯ)
+(function(){
+  const _rh = renderHome;
+  renderHome = function(){
+    const all = tasksCache;
+    tasksCache = all.filter(t=>t.status !== HOLD);
+    try{ _rh.apply(this, arguments); } finally { tasksCache = all; }
+  };
+})();
+
 function renderWork(){
   const el = $('#work-view');
   const cats = new Set(DEFAULT_CATEGORIES);
@@ -36,6 +66,20 @@ function sortForDisplay(list){
   });
 }
 
+function statusGroup(t){
+  return t.status==='เสร็จแล้ว' ? 'done' : (t.status===HOLD ? 'hold' : 'active');
+}
+
+function collapsibleSection(key, title, cls, list, emptyMsg, force){
+  const open = force || workShow[key];
+  const btn = force ? '' : `<button type="button" class="section-toggle" data-sec="${key}">${open?'ซ่อน':'แสดง'}</button>`;
+  let h = `<div class="section-title ${cls}">${title} <span class="count-pill">${list.length}</span>${btn}</div>`;
+  if(open){
+    h += list.length ? `<div class="task-list" data-group="${key}">${list.map(taskCardHtml).join('')}</div>` : emptyStateHtml(emptyMsg);
+  }
+  return h;
+}
+
 function renderWorkLists(){
   updateWorkBadge();
   if(!$('#work-lists')) return;
@@ -46,16 +90,24 @@ function renderWorkLists(){
     return true;
   });
 
-  const notDone = sortForDisplay(filtered.filter(t=>t.status!=='เสร็จแล้ว'));
-  const done = sortForDisplay(filtered.filter(t=>t.status==='เสร็จแล้ว'));
+  const active = sortForDisplay(filtered.filter(t=>statusGroup(t)==='active'));
+  const hold = sortForDisplay(filtered.filter(t=>statusGroup(t)==='hold'));
+  const done = sortForDisplay(filtered.filter(t=>statusGroup(t)==='done'));
+  // ถ้ากำลังค้นหาหรือกรองหมวดหมู่ ให้เปิดส่วนที่พับไว้อัตโนมัติ
+  const force = !!(q || workCategoryFilter);
 
-  let html = `<div class="section-title">ยังไม่เสร็จ <span class="count-pill">${notDone.length}</span></div>`;
-  html += notDone.length ? `<div class="task-list" data-group="active">${notDone.map(taskCardHtml).join('')}</div>` : emptyStateHtml('ไม่มีงานค้าง เยี่ยมมาก! 🎉');
+  let html = `<div class="section-title">ยังไม่เสร็จ <span class="count-pill">${active.length}</span></div>`;
+  html += active.length ? `<div class="task-list" data-group="active">${active.map(taskCardHtml).join('')}</div>` : emptyStateHtml('ไม่มีงานค้าง เยี่ยมมาก! 🎉');
 
-  html += `<div class="section-title done">เสร็จแล้ว <span class="count-pill">${done.length}</span></div>`;
-  html += done.length ? `<div class="task-list" data-group="done">${done.map(taskCardHtml).join('')}</div>` : emptyStateHtml('ยังไม่มีงานที่เสร็จในตอนนี้');
+  if(hold.length) html += collapsibleSection('hold', 'พักไว้', 'hold', hold, 'ไม่มีงานที่พักไว้', force);
+  html += collapsibleSection('done', 'เสร็จแล้ว', 'done', done, 'ยังไม่มีงานที่เสร็จในตอนนี้', force);
 
   $('#work-lists').innerHTML = html;
+  $all('.section-toggle').forEach(btn=> btn.addEventListener('click', ()=>{
+    workShow[btn.dataset.sec] = !workShow[btn.dataset.sec];
+    saveWorkShow();
+    renderWorkLists();
+  }));
   $all('.task-card').forEach(card=> card.addEventListener('click', (e)=>{
     if(e.target.closest('.pin-btn') || e.target.closest('.drag-handle')) return;
     openTaskModal(card.dataset.id);
@@ -116,12 +168,11 @@ function wireDragAndDrop(){
 
 async function reorderWithinList(listEl, srcId, targetId){
   const groupName = listEl.dataset.group;
-  const done = groupName==='done';
   const q = workSearch.trim().toLowerCase();
   let filtered = tasksCache.filter(t=>{
     if(q && !t.title.toLowerCase().includes(q)) return false;
     if(workCategoryFilter && t.category !== workCategoryFilter) return false;
-    return (t.status==='เสร็จแล้ว') === done;
+    return statusGroup(t) === groupName;
   });
   let ordered = sortForDisplay(filtered).map(t=>t.id);
   const srcIdx = ordered.indexOf(srcId);
@@ -150,12 +201,13 @@ function emptyStateHtml(msg){
 }
 
 function taskCardHtml(t){
-  const overdue = isOverdue(t);
+  const onHold = t.status === HOLD;
+  const overdue = isOverdue(t) && !onHold;
   const done = t.status === 'เสร็จแล้ว';
   const note = latestNoteByTask[t.id];
   const catColor = colorForCategory(t.category);
   return `
-    <div class="task-card ${done?'done':''} ${t.pinned?'pinned':''}" data-id="${t.id}" draggable="true">
+    <div class="task-card ${done?'done':''} ${onHold?'on-hold':''} ${t.pinned?'pinned':''}" data-id="${t.id}" draggable="true">
       <span class="drag-handle" title="ลากเพื่อจัดลำดับ">⠿</span>
       <button type="button" class="pin-btn ${t.pinned?'active':''}" data-id="${t.id}" title="${t.pinned?'เอาดาวออก':'ติดดาว'}">${t.pinned?'★':'☆'}</button>
       ${moodDot(t)}
@@ -175,7 +227,7 @@ function taskCardHtml(t){
   `;
 }
 
-// ---------- SIDEBAR BADGE: จำนวนงานค้าง ----------
+// ---------- SIDEBAR BADGE: จำนวนงานค้าง (ไม่นับงานเสร็จและงานที่พักไว้) ----------
 (function(){
   const btn = document.querySelector('.nav-item[data-view="work"]');
   if(btn && !document.getElementById('work-badge')){
@@ -189,7 +241,7 @@ function taskCardHtml(t){
 })();
 
 function updateWorkBadge(){
-  const n = tasksCache.filter(t=>t.status!=='เสร็จแล้ว').length;
+  const n = tasksCache.filter(t=>t.status!=='เสร็จแล้ว' && t.status!==HOLD).length;
   const b = document.getElementById('work-badge');
   if(b){ b.textContent = n; b.classList.toggle('hidden', !n); }
 }
