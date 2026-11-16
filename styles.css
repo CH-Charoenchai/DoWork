@@ -295,3 +295,12 @@ a{color:inherit;}
   .auth-card{margin-top:70px;}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important;}}
+
+/* ---------- สถานะ "พักไว้" + ปุ่มแสดง/ซ่อนส่วน ---------- */
+.status-hold{background:#E8EEF8;color:#4D5F8C;border-color:#8FA3CC;}
+.segmented button.sel-status[data-val="พักไว้"].active{background:#E8EEF8;border-color:#4D5F8C;color:#34476F;}
+.section-title.hold .count-pill{background:#6B7A9E;}
+.section-toggle{margin-left:4px;background:var(--surface);border:1.5px solid var(--navy);color:var(--navy);font-size:12px;font-weight:700;padding:3px 12px;border-radius:999px;}
+.section-toggle:hover{background:var(--yellow);}
+.task-card.on-hold{background:var(--surface-soft);border-style:dashed;}
+@media (max-width:860px){.segmented button{font-size:12px;padding:9px 3px;}}
