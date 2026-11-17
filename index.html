@@ -5,9 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DoWork — จัดการงานประจำวัน</title>
 <link rel="icon" type="image/png" href="data:image/png;base64,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">
-<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=Mali:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="styles.css">
@@ -39,13 +38,14 @@
 </div>
 
 <div id="app-screen" class="hidden">
-  <aside class="sidebar">
+  <header class="topbar">
     <div class="brand"><span class="brand-dot"></span>DoWork</div>
-    <button class="nav-item active" data-view="home"><span class="nav-icon">🏠</span>Home</button>
-    <button class="nav-item" data-view="work"><span class="nav-icon">📋</span>Work</button>
-    <button class="nav-item" data-view="settings"><span class="nav-icon">⚙️</span>Settings</button>
-    <div class="shortcut-section">
-      <div class="shortcut-section-label">Shortcuts</div>
+    <nav class="top-nav">
+      <button class="nav-item active" data-view="home">Home</button>
+      <button class="nav-item" data-view="work">Work</button>
+      <button class="nav-item" data-view="settings">Settings</button>
+    </nav>
+    <div class="shortcut-wrap">
       <div class="shortcut-grid" id="shortcut-grid"></div>
       <div class="shortcut-add-form hidden" id="shortcut-add-form">
         <input type="text" id="shortcut-url-input" placeholder="วางลิงก์ เช่น https://...">
@@ -56,33 +56,28 @@
         </div>
       </div>
     </div>
-    <div class="sidebar-footer">
-      <div class="user-email" id="sidebar-email"></div>
-      <button class="logout-btn" id="logout-btn">ออกจากระบบ</button>
-    </div>
-  </aside>
-
-  <div style="flex:1;display:flex;flex-direction:column;">
-    <div class="mobile-topbar">
-      <div class="brand" style="margin:0;font-size:18px;"><span class="brand-dot"></span>DoWork</div>
-      <div class="mobile-nav">
-        <button class="active" data-view="home">Home</button>
-        <button data-view="work">Work</button>
-        <button data-view="settings">⚙️</button>
+    <button class="add-btn" id="fab-add" title="เพิ่มงานใหม่">+ งานใหม่</button>
+    <details class="user-menu">
+      <summary class="user-btn" title="บัญชี">👤</summary>
+      <div class="user-pop">
+        <div class="user-email" id="sidebar-email"></div>
+        <button class="logout-btn" id="logout-btn">ออกจากระบบ</button>
+        <button class="hidden" id="logout-btn-mobile" tabindex="-1" aria-hidden="true"></button>
       </div>
-      <button class="logout-btn" id="logout-btn-mobile" style="width:auto;padding:6px 10px;">ออก</button>
-    </div>
+    </details>
+  </header>
 
-    <main class="main">
-      <div id="home-view"></div>
-      <div id="work-view" class="hidden"></div>
-      <div id="settings-view" class="hidden"></div>
-    </main>
-  </div>
+  <main class="main">
+    <div id="home-view"></div>
+    <div id="work-view" class="hidden"></div>
+    <div id="settings-view" class="hidden"></div>
+  </main>
 
-  <button class="fab" id="fab-add" title="เพิ่มงานใหม่">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-  </button>
+  <nav class="mobile-nav">
+    <button class="active" data-view="home">Home</button>
+    <button data-view="work">Work</button>
+    <button data-view="settings">⚙️</button>
+  </nav>
 </div>
 
 <div class="modal-overlay hidden" id="add-modal">
@@ -148,6 +143,7 @@
         <div class="segmented" id="tm-status-group">
           <button type="button" class="sel-status" data-val="ยังไม่ทำ">ยังไม่ทำ</button>
           <button type="button" class="sel-status" data-val="กำลังทำ">กำลังทำ</button>
+          <button type="button" class="sel-status" data-val="พักไว้">พักไว้</button>
           <button type="button" class="sel-status" data-val="เสร็จแล้ว">เสร็จแล้ว</button>
         </div>
       </div>
@@ -227,6 +223,7 @@ let currentView = 'home';
 let isSignupMode = false;
 let activeTaskId = null;
 let homeRange = 'month'; // month | quarter | all
+const HOLD = 'พักไว้';
 const DEFAULT_CATEGORIES = ['Project','Meeting','Follow-up','Admin'];
 let userCategories = [...DEFAULT_CATEGORIES];
 let categoryColors = {};
@@ -240,7 +237,7 @@ function colorForCategory(cat){
 
 const URGENCY_COLOR = { 'ด่วนมาก':'var(--coral)', 'ปกติ':'var(--yellow)', 'ไม่ด่วน':'var(--mint)' };
 const IMPACT_SIZE = { 'สูง':18, 'กลาง':14, 'ต่ำ':10 };
-const STATUS_CLASS = { 'ยังไม่ทำ':'status-todo', 'กำลังทำ':'status-doing', 'เสร็จแล้ว':'status-done' };
+const STATUS_CLASS = { 'ยังไม่ทำ':'status-todo', 'กำลังทำ':'status-doing', 'พักไว้':'status-hold', 'เสร็จแล้ว':'status-done' };
 
 // ---------- helpers ----------
 function $(sel){ return document.querySelector(sel); }
@@ -255,9 +252,14 @@ function fmtDateTime(d){
   return dt.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}) + ' ' + dt.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
 }
 function isOverdue(task){
-  if(!task.deadline || task.status === 'เสร็จแล้ว') return false;
+  if(!task.deadline || task.status === 'เสร็จแล้ว' || task.status === HOLD) return false;
   const today = new Date(); today.setHours(0,0,0,0);
   return new Date(task.deadline) < today;
+}
+function daysUntil(dl){
+  const [y,m,d] = String(dl).slice(0,10).split('-').map(Number);
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.floor((new Date(y, m-1, d) - today) / 864e5);
 }
 function showToast(msg){
   const el = document.createElement('div');
@@ -347,7 +349,7 @@ $('#icon-upload-input').addEventListener('change', async (e)=>{
   iconUploadCallback = null;
 });
 
-// ---------- SIDEBAR SHORTCUTS ----------
+// ---------- TOP BAR SHORTCUTS ----------
 function shortcutFaviconUrl(url){
   try{
     const host = new URL(url).hostname;
@@ -556,6 +558,34 @@ function escapeHtml(str){
   const d = document.createElement('div');
   d.textContent = str==null ? '' : str;
   return d.innerHTML;
+}
+
+// ---------- QUICK ADD / QUICK STATUS (ใช้ทั้ง Home และ Work) ----------
+async function quickAddTask(title, category){
+  title = (title || '').trim();
+  if(!title) return false;
+  const maxSort = tasksCache.reduce((m,t)=> Math.max(m, t.sort_order||0), 0);
+  const { error } = await sb.from('tasks').insert({
+    user_id: currentUser.id, title, category: category || 'Project',
+    urgency: 'ปกติ', impact: 'กลาง', status: 'ยังไม่ทำ', deadline: null,
+    sort_order: maxSort + 1
+  });
+  if(error){ showToast('เพิ่มงานไม่สำเร็จ: '+error.message); return false; }
+  showToast('เพิ่มงานใหม่แล้ว ✨');
+  await loadTasks();
+  return true;
+}
+
+async function setTaskStatus(id, status){
+  const payload = { status, completed_at: status==='เสร็จแล้ว' ? new Date().toISOString() : null };
+  const { error } = await sb.from('tasks').update(payload).eq('id', id);
+  if(error){ showToast('อัปเดตไม่สำเร็จ: '+error.message); return; }
+  const t = tasksCache.find(x=>x.id===id);
+  if(t) Object.assign(t, payload);
+  showToast(status==='เสร็จแล้ว' ? 'ทำเสร็จแล้ว ✓' : 'อัปเดตสถานะแล้ว');
+  if(typeof updateWorkBadge==='function') updateWorkBadge();
+  if(currentView==='home') renderHome();
+  else if(currentView==='work') renderWorkLists();
 }
 
 // ---------- ADD TASK ----------
@@ -859,28 +889,50 @@ function getRangeStart(){
 
 let trendChartInstance = null;
 
+function deadlineText(t){
+  const d = daysUntil(t.deadline);
+  if(d < 0) return `เลย ${-d} วัน`;
+  if(d === 0) return 'วันนี้';
+  if(d <= 5) return `อีก ${d} วัน`;
+  return fmtDate(t.deadline);
+}
+
 function renderHome(){
   const el = $('#home-view');
-  const total = tasksCache.length;
-  const notStarted = tasksCache.filter(t=>t.status==='ยังไม่ทำ').length;
-  const doing = tasksCache.filter(t=>t.status==='กำลังทำ').length;
+  // งานที่ "พักไว้" ไม่ถูกนับในสถิติหน้า Home
+  const counted = tasksCache.filter(t=>t.status!==HOLD);
+  const held = tasksCache.length - counted.length;
+  const live = counted.filter(t=>t.status!=='เสร็จแล้ว');
   const rangeStart = getRangeStart();
-  const completedInRange = tasksCache.filter(t=> t.status==='เสร็จแล้ว' && t.completed_at && (!rangeStart || new Date(t.completed_at)>=rangeStart));
-  const completedAll = tasksCache.filter(t=>t.status==='เสร็จแล้ว');
-  const completionRate = total ? Math.round((completedAll.length/total)*100) : 0;
+  const completedInRange = counted.filter(t=> t.status==='เสร็จแล้ว' && t.completed_at && (!rangeStart || new Date(t.completed_at)>=rangeStart));
+  const completedAll = counted.filter(t=>t.status==='เสร็จแล้ว');
+  const completionRate = counted.length ? Math.round((completedAll.length/counted.length)*100) : 0;
+
+  const soon = live.filter(t=> t.deadline && daysUntil(t.deadline) <= 5);
+  const lateN = live.filter(isOverdue).length;
+  const todo = live.filter(t=>t.deadline).sort((a,b)=> new Date(a.deadline)-new Date(b.deadline)).slice(0,8);
 
   const delta = computePeriodDelta();
   const compliance = computeDeadlineCompliance();
   const highImpact = computeHighImpactRate();
+  const today = new Date().toLocaleDateString('th-TH',{weekday:'long', day:'numeric', month:'long'});
 
   const deltaHtml = delta ? `
     <div class="stat-delta ${delta.delta>0?'up':delta.delta<0?'down':'flat'}">
       ${delta.delta>0?'▲':delta.delta<0?'▼':'―'} ${Math.abs(delta.delta)}% จาก${homeRange==='month'?'เดือนก่อน':'ไตรมาสก่อน'}
     </div>` : '';
 
+  const todoHtml = todo.length ? `<div class="mini-list">${todo.map(t=>`
+    <div class="mini-item" data-id="${t.id}">
+      <button type="button" class="row-check" data-check="${t.id}" title="ทำเสร็จ" aria-label="ทำเสร็จ"></button>
+      <span class="mtitle">${escapeHtml(t.title)}</span>
+      <span class="tag tag-cat" style="background:${colorForCategory(t.category)}22;color:${colorForCategory(t.category)};">${escapeHtml(t.category)}</span>
+      <span class="mmeta ${isOverdue(t)?'overdue':''}">${deadlineText(t)}</span>
+    </div>`).join('')}</div>` : '<div class="empty-note">ไม่มีงานที่ใกล้ครบกำหนด</div>';
+
   el.innerHTML = `
     <div class="view-header">
-      <div><h1>Home</h1><div class="view-sub">ภาพรวมงานของคุณ ${escapeHtml(currentUser.email.split('@')[0])}</div></div>
+      <div><h1>วันนี้ต้องทำอะไรบ้าง</h1><div class="view-sub">${escapeHtml(today)} · ค้างอยู่ ${live.length} งาน</div></div>
       <div class="header-actions">
         <div class="range-toggle" id="range-toggle">
           <button data-r="month" class="${homeRange==='month'?'active':''}">เดือนนี้</button>
@@ -891,42 +943,41 @@ function renderHome(){
       </div>
     </div>
 
+    <div class="quick-add">
+      <input type="text" id="qa-title" placeholder="พิมพ์ชื่องานแล้วกด Enter เพื่อเพิ่มเร็วๆ...">
+      <select id="qa-cat" aria-label="หมวดหมู่">${allKnownCategories().map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}</select>
+      <button type="button" class="btn-add" id="qa-btn">เพิ่ม</button>
+    </div>
+
     <div class="stat-grid">
-      <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">งานทั้งหมด</div></div>
+      <div class="stat-card">
+        <div class="stat-num">${live.length}</div><div class="stat-label">งานค้าง</div>
+        <div class="stat-sub">${held ? 'ไม่รวมพักไว้ '+held+' งาน' : 'ยังไม่มีงานที่พักไว้'}</div>
+      </div>
+      <div class="stat-card ${lateN?'accent-coral':''}">
+        <div class="stat-num">${soon.length}</div><div class="stat-label">ใกล้ครบกำหนด / เลยกำหนด</div>
+        <div class="stat-sub">${lateN ? 'เลยกำหนด '+lateN+' งาน' : 'ไม่มีงานเลยกำหนด'}</div>
+      </div>
       <div class="stat-card accent-mint">
-        <div class="stat-num">${completedInRange.length}</div>
-        <div class="stat-label">เสร็จ (ช่วงที่เลือก)</div>
+        <div class="stat-num">${completedInRange.length}</div><div class="stat-label">เสร็จ (ช่วงที่เลือก)</div>
         ${deltaHtml}
       </div>
-      <div class="stat-card accent-purple"><div class="stat-num">${doing}</div><div class="stat-label">กำลังทำ</div></div>
-      <div class="stat-card"><div class="stat-num">${notStarted}</div><div class="stat-label">ยังไม่เริ่ม</div></div>
-      <div class="stat-card"><div class="stat-num">${completionRate}%</div><div class="stat-label">Completion rate</div></div>
-      <div class="stat-card ${compliance && compliance.rate>=80?'accent-mint':''}">
-        <div class="stat-num">${compliance ? compliance.rate+'%' : '–'}</div>
-        <div class="stat-label">ส่งตรงเวลา (Deadline compliance)</div>
-        ${compliance ? `<div class="stat-sub">${compliance.onTime}/${compliance.total} งานที่มีกำหนดส่ง</div>` : '<div class="stat-sub">ยังไม่มีข้อมูล</div>'}
-      </div>
-      <div class="stat-card accent-purple">
-        <div class="stat-num">${highImpact ? highImpact.rate+'%' : '–'}</div>
-        <div class="stat-label">งาน Impact สูงที่เสร็จ</div>
-        ${highImpact ? `<div class="stat-sub">${highImpact.done}/${highImpact.total} งาน (ทั้งหมด)</div>` : '<div class="stat-sub">ยังไม่มีงาน impact สูง</div>'}
-      </div>
     </div>
 
-    <div class="panel-grid">
+    <div class="home-grid">
       <div class="panel">
         <h3>ใกล้ครบกำหนด</h3>
-        ${upcomingListHtml()}
+        ${todoHtml}
       </div>
       <div class="panel">
-        <h3>เสร็จล่าสุด</h3>
-        ${recentDoneListHtml()}
+        <h3>งานที่เสร็จ 6 เดือนล่าสุด</h3>
+        <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
+        <div class="metric-list">
+          <div class="metric"><span>Completion rate</span><b>${completionRate}%</b></div>
+          <div class="metric"><span>ส่งตรงเวลา</span><b>${compliance ? compliance.rate+'%' : '–'}</b><i>${compliance ? compliance.onTime+'/'+compliance.total+' งาน' : ''}</i></div>
+          <div class="metric"><span>งาน Impact สูงที่เสร็จ</span><b>${highImpact ? highImpact.rate+'%' : '–'}</b><i>${highImpact ? highImpact.done+'/'+highImpact.total+' งาน' : ''}</i></div>
+        </div>
       </div>
-    </div>
-
-    <div class="panel" style="margin-bottom:16px;">
-      <h3>แนวโน้มงานที่เสร็จ (6 เดือนล่าสุด)</h3>
-      <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
     </div>
 
     <div class="panel-grid">
@@ -946,13 +997,24 @@ function renderHome(){
     homeRange = e.target.dataset.r;
     renderHome();
   });
-  $all('.mini-item').forEach(it=> it.addEventListener('click', ()=>{ switchView('work'); setTimeout(()=>openTaskModal(it.dataset.id),50); }));
+  $all('.mini-item[data-id]').forEach(it=> it.addEventListener('click', (e)=>{
+    if(e.target.closest('.row-check')) return;
+    switchView('work'); setTimeout(()=>openTaskModal(it.dataset.id),50);
+  }));
+  $all('.row-check').forEach(b=> b.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    setTaskStatus(b.dataset.check, 'เสร็จแล้ว');
+  }));
+  const qaTitle = $('#qa-title');
+  const doQuickAdd = ()=> quickAddTask(qaTitle.value, $('#qa-cat').value);
+  $('#qa-btn').addEventListener('click', doQuickAdd);
+  qaTitle.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); doQuickAdd(); } });
   $('#export-csv-btn').addEventListener('click', exportSummaryCSV);
 
   renderTrendChart();
 }
 
-// ---------- HOME ANALYTICS HELPERS ----------
+// ---------- HOME ANALYTICS HELPERS (ไม่นับงานที่พักไว้) ----------
 function computePeriodDelta(){
   if(homeRange==='all') return null;
   const now = new Date();
@@ -992,7 +1054,7 @@ function computeDeadlineCompliance(){
 }
 
 function computeHighImpactRate(){
-  const highImpact = tasksCache.filter(t=>t.impact==='สูง');
+  const highImpact = tasksCache.filter(t=>t.impact==='สูง' && t.status!==HOLD);
   if(!highImpact.length) return null;
   const done = highImpact.filter(t=>t.status==='เสร็จแล้ว').length;
   return { rate: Math.round((done/highImpact.length)*100), done, total: highImpact.length };
@@ -1023,14 +1085,14 @@ function renderTrendChart(){
   if(trendChartInstance){ trendChartInstance.destroy(); trendChartInstance = null; }
   trendChartInstance = new Chart(canvas, {
     type:'bar',
-    data:{ labels, datasets:[{ label:'งานที่เสร็จ', data, backgroundColor:'#7C6FFF', borderRadius:6, maxBarThickness:36 }] },
+    data:{ labels, datasets:[{ label:'งานที่เสร็จ', data, backgroundColor:'#4A74D0', borderColor:'#5B78AE', borderWidth:1.5, borderRadius:6, maxBarThickness:36 }] },
     options:{
       responsive:true,
       maintainAspectRatio:false,
       plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:(ctx)=> ctx.parsed.y + ' งาน' } } },
       scales:{
-        y:{ beginAtZero:true, ticks:{ stepSize:1, precision:0, color:'#8A84A0' }, grid:{ color:'#E3E0F5' } },
-        x:{ ticks:{ color:'#8A84A0' }, grid:{ display:false } }
+        y:{ beginAtZero:true, ticks:{ stepSize:1, precision:0, color:'#5F6F94' }, grid:{ color:'#DCE5F3' } },
+        x:{ ticks:{ color:'#5F6F94' }, grid:{ display:false } }
       }
     }
   });
@@ -1087,30 +1149,6 @@ function categoryBarsHtml(list){
       <div class="bar-track"><div class="bar-fill" style="width:${(c/max)*100}%;background:var(--pink);"></div></div>
     </div>
   `).join('');
-}
-
-function upcomingListHtml(){
-  const list = tasksCache.filter(t=>t.status!=='เสร็จแล้ว' && t.deadline).sort((a,b)=>new Date(a.deadline)-new Date(b.deadline)).slice(0,5);
-  if(!list.length) return '<div class="empty-note">ไม่มีงานที่ใกล้ครบกำหนด</div>';
-  return `<div class="mini-list">${list.map(t=>`
-    <div class="mini-item" data-id="${t.id}">
-      ${moodDot(t)}
-      <span class="mtitle">${escapeHtml(t.title)}</span>
-      <span class="mmeta ${isOverdue(t)?'overdue':''}">${fmtDate(t.deadline)}</span>
-    </div>
-  `).join('')}</div>`;
-}
-
-function recentDoneListHtml(){
-  const list = tasksCache.filter(t=>t.status==='เสร็จแล้ว' && t.completed_at).sort((a,b)=>new Date(b.completed_at)-new Date(a.completed_at)).slice(0,5);
-  if(!list.length) return '<div class="empty-note">ยังไม่มีงานที่เสร็จ</div>';
-  return `<div class="mini-list">${list.map(t=>`
-    <div class="mini-item" data-id="${t.id}">
-      ${moodDot(t)}
-      <span class="mtitle">${escapeHtml(t.title)}</span>
-      <span class="mmeta">${fmtDate(t.completed_at)}</span>
-    </div>
-  `).join('')}</div>`;
 }
 
 // ---------- RENDER: SETTINGS VIEW ----------
