@@ -1,35 +1,19 @@
 // ---------- RENDER: WORK VIEW ----------
-let workSearch = '', workCategoryFilter = '';
+let workSearch = '', workCategoryFilter = '', workStatusFilter = '';
 
-// สถานะ "พักไว้" (Hold) + การพับ/แสดงส่วน "พักไว้" และ "เสร็จแล้ว" (จำค่าไว้ในเบราว์เซอร์)
-const HOLD = 'พักไว้';
+// การพับ/แสดงส่วน "พักไว้" และ "เสร็จแล้ว" (จำค่าไว้ในเบราว์เซอร์)
 const WORK_SHOW_KEY = 'dowork_work_sections';
 let workShow = { hold:false, done:false };
 try{ Object.assign(workShow, JSON.parse(localStorage.getItem(WORK_SHOW_KEY) || '{}')); }catch(e){}
 function saveWorkShow(){ try{ localStorage.setItem(WORK_SHOW_KEY, JSON.stringify(workShow)); }catch(e){} }
 
-STATUS_CLASS[HOLD] = 'status-hold';
-
-// เพิ่มปุ่มสถานะ "พักไว้" ใน modal งาน
-(function(){
-  const g = document.getElementById('tm-status-group');
-  if(g && !g.querySelector('[data-val="'+HOLD+'"]')){
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'sel-status'; b.dataset.val = HOLD; b.textContent = HOLD;
-    const doing = g.querySelector('[data-val="กำลังทำ"]');
-    if(doing) doing.after(b); else g.appendChild(b);
-  }
-})();
-
-// หน้า Home ไม่นับงานที่พักไว้ (สถิติ, ใกล้ครบกำหนด, Impact สูง ฯลฯ)
-(function(){
-  const _rh = renderHome;
-  renderHome = function(){
-    const all = tasksCache;
-    tasksCache = all.filter(t=>t.status !== HOLD);
-    try{ _rh.apply(this, arguments); } finally { tasksCache = all; }
-  };
-})();
+const WORK_STATUS_CHIPS = [
+  { val:'', label:'ทั้งหมด' },
+  { val:'ยังไม่ทำ', label:'ยังไม่ทำ' },
+  { val:'กำลังทำ', label:'กำลังทำ' },
+  { val:HOLD, label:'พักไว้' },
+  { val:'เสร็จแล้ว', label:'เสร็จแล้ว' }
+];
 
 function renderWork(){
   const el = $('#work-view');
@@ -38,20 +22,29 @@ function renderWork(){
 
   el.innerHTML = `
     <div class="view-header">
-      <div><h1>Work</h1><div class="view-sub">งานทั้งหมดของคุณ ลากเพื่อจัดลำดับได้เลย</div></div>
+      <div><h1>Work</h1><div class="view-sub">ลากเพื่อจัดลำดับ · กดช่องสี่เหลี่ยมเพื่อทำเสร็จ</div></div>
+      <div class="toolbar" style="margin:0;">
+        <input type="text" id="work-search" placeholder="ค้นหางาน..." value="${escapeHtml(workSearch)}">
+        <select id="work-cat-filter">
+          <option value="">ทุกหมวดหมู่</option>
+          ${[...cats].map(c=>`<option value="${escapeHtml(c)}" ${c===workCategoryFilter?'selected':''}>${escapeHtml(c)}</option>`).join('')}
+        </select>
+      </div>
     </div>
-    <div class="toolbar">
-      <input type="text" id="work-search" placeholder="ค้นหางาน..." value="${escapeHtml(workSearch)}">
-      <select id="work-cat-filter">
-        <option value="">ทุกหมวดหมู่</option>
-        ${[...cats].map(c=>`<option value="${escapeHtml(c)}" ${c===workCategoryFilter?'selected':''}>${escapeHtml(c)}</option>`).join('')}
-      </select>
+    <div class="chip-row" id="work-chips"></div>
+    <div class="quick-add">
+      <input type="text" id="work-qa-title" placeholder="+ เพิ่มงานใหม่ แล้วกด Enter...">
+      <button type="button" class="btn-add" id="work-qa-btn">เพิ่ม</button>
     </div>
     <div id="work-lists"></div>
   `;
 
   $('#work-search').addEventListener('input', (e)=>{ workSearch = e.target.value; renderWorkLists(); });
   $('#work-cat-filter').addEventListener('change', (e)=>{ workCategoryFilter = e.target.value; renderWorkLists(); });
+  const qa = $('#work-qa-title');
+  const doAdd = async ()=>{ const ok = await quickAddTask(qa.value, workCategoryFilter || 'Project'); if(ok){ const n = $('#work-qa-title'); if(n) n.focus(); } };
+  $('#work-qa-btn').addEventListener('click', doAdd);
+  qa.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); doAdd(); } });
 
   renderWorkLists();
 }
@@ -80,27 +73,51 @@ function collapsibleSection(key, title, cls, list, emptyMsg, force){
   return h;
 }
 
+function renderWorkChips(base){
+  const el = $('#work-chips');
+  if(!el) return;
+  el.innerHTML = WORK_STATUS_CHIPS.map(c=>{
+    const n = c.val ? base.filter(t=>t.status===c.val).length : base.length;
+    return `<button type="button" class="chip ${workStatusFilter===c.val?'on':''}" data-st="${escapeHtml(c.val)}">${c.label} ${n}</button>`;
+  }).join('');
+  $all('#work-chips .chip').forEach(b=> b.addEventListener('click', ()=>{
+    workStatusFilter = b.dataset.st;
+    renderWorkLists();
+  }));
+}
+
 function renderWorkLists(){
   updateWorkBadge();
   if(!$('#work-lists')) return;
   const q = workSearch.trim().toLowerCase();
-  let filtered = tasksCache.filter(t=>{
+  // ฐานสำหรับตัวเลขบนปุ่มกรอง = ผลค้นหา + หมวดหมู่ (ยังไม่กรองสถานะ)
+  const base = tasksCache.filter(t=>{
     if(q && !t.title.toLowerCase().includes(q)) return false;
     if(workCategoryFilter && t.category !== workCategoryFilter) return false;
     return true;
   });
+  renderWorkChips(base);
 
-  const active = sortForDisplay(filtered.filter(t=>statusGroup(t)==='active'));
-  const hold = sortForDisplay(filtered.filter(t=>statusGroup(t)==='hold'));
-  const done = sortForDisplay(filtered.filter(t=>statusGroup(t)==='done'));
-  // ถ้ากำลังค้นหาหรือกรองหมวดหมู่ ให้เปิดส่วนที่พับไว้อัตโนมัติ
-  const force = !!(q || workCategoryFilter);
+  let html = '';
+  if(workStatusFilter){
+    // เลือกสถานะเดียว: แสดงเป็นลิสต์เดียวแบบเปิดเต็ม
+    const list = sortForDisplay(base.filter(t=>t.status===workStatusFilter));
+    const grp = statusGroup({ status: workStatusFilter });
+    html = list.length
+      ? `<div class="task-list" data-group="${grp}">${list.map(taskCardHtml).join('')}</div>`
+      : emptyStateHtml('ไม่มีงานในสถานะนี้');
+  } else {
+    const active = sortForDisplay(base.filter(t=>statusGroup(t)==='active'));
+    const hold = sortForDisplay(base.filter(t=>statusGroup(t)==='hold'));
+    const done = sortForDisplay(base.filter(t=>statusGroup(t)==='done'));
+    // ถ้ากำลังค้นหาหรือกรองหมวดหมู่ ให้เปิดส่วนที่พับไว้อัตโนมัติ
+    const force = !!(q || workCategoryFilter);
 
-  let html = `<div class="section-title">ยังไม่เสร็จ <span class="count-pill">${active.length}</span></div>`;
-  html += active.length ? `<div class="task-list" data-group="active">${active.map(taskCardHtml).join('')}</div>` : emptyStateHtml('ไม่มีงานค้าง เยี่ยมมาก! 🎉');
-
-  if(hold.length) html += collapsibleSection('hold', 'พักไว้', 'hold', hold, 'ไม่มีงานที่พักไว้', force);
-  html += collapsibleSection('done', 'เสร็จแล้ว', 'done', done, 'ยังไม่มีงานที่เสร็จในตอนนี้', force);
+    html = `<div class="section-title">ยังไม่เสร็จ <span class="count-pill">${active.length}</span></div>`;
+    html += active.length ? `<div class="task-list" data-group="active">${active.map(taskCardHtml).join('')}</div>` : emptyStateHtml('ไม่มีงานค้าง เยี่ยมมาก! 🎉');
+    if(hold.length) html += collapsibleSection('hold', 'พักไว้', 'hold', hold, 'ไม่มีงานที่พักไว้', force);
+    html += collapsibleSection('done', 'เสร็จแล้ว', 'done', done, 'ยังไม่มีงานที่เสร็จในตอนนี้', force);
+  }
 
   $('#work-lists').innerHTML = html;
   $all('.section-toggle').forEach(btn=> btn.addEventListener('click', ()=>{
@@ -109,12 +126,16 @@ function renderWorkLists(){
     renderWorkLists();
   }));
   $all('.task-card').forEach(card=> card.addEventListener('click', (e)=>{
-    if(e.target.closest('.pin-btn') || e.target.closest('.drag-handle')) return;
+    if(e.target.closest('.pin-btn') || e.target.closest('.drag-handle') || e.target.closest('.task-check')) return;
     openTaskModal(card.dataset.id);
   }));
   $all('.pin-btn').forEach(btn=> btn.addEventListener('click', (e)=>{
     e.stopPropagation();
     togglePin(btn.dataset.id);
+  }));
+  $all('.task-check').forEach(btn=> btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    setTaskStatus(btn.dataset.id, btn.classList.contains('on') ? 'ยังไม่ทำ' : 'เสร็จแล้ว');
   }));
   wireDragAndDrop();
 }
@@ -172,6 +193,7 @@ async function reorderWithinList(listEl, srcId, targetId){
   let filtered = tasksCache.filter(t=>{
     if(q && !t.title.toLowerCase().includes(q)) return false;
     if(workCategoryFilter && t.category !== workCategoryFilter) return false;
+    if(workStatusFilter && t.status !== workStatusFilter) return false;
     return statusGroup(t) === groupName;
   });
   let ordered = sortForDisplay(filtered).map(t=>t.id);
@@ -202,13 +224,14 @@ function emptyStateHtml(msg){
 
 function taskCardHtml(t){
   const onHold = t.status === HOLD;
-  const overdue = isOverdue(t) && !onHold;
+  const overdue = isOverdue(t);
   const done = t.status === 'เสร็จแล้ว';
   const note = latestNoteByTask[t.id];
   const catColor = colorForCategory(t.category);
   return `
     <div class="task-card ${done?'done':''} ${onHold?'on-hold':''} ${t.pinned?'pinned':''}" data-id="${t.id}" draggable="true">
       <span class="drag-handle" title="ลากเพื่อจัดลำดับ">⠿</span>
+      <button type="button" class="task-check ${done?'on':''}" data-id="${t.id}" title="${done?'ยกเลิกเสร็จ':'ทำเสร็จ'}" aria-label="${done?'ยกเลิกเสร็จ':'ทำเสร็จ'}">${done?'✓':''}</button>
       <button type="button" class="pin-btn ${t.pinned?'active':''}" data-id="${t.id}" title="${t.pinned?'เอาดาวออก':'ติดดาว'}">${t.pinned?'★':'☆'}</button>
       ${moodDot(t)}
       <div class="task-body">
@@ -227,11 +250,11 @@ function taskCardHtml(t){
   `;
 }
 
-// ---------- SIDEBAR BADGE: จำนวนงานค้าง (ไม่นับงานเสร็จและงานที่พักไว้) ----------
+// ---------- TOP NAV BADGE: จำนวนงานค้าง (ไม่นับงานเสร็จและงานที่พักไว้) ----------
 (function(){
   const btn = document.querySelector('.nav-item[data-view="work"]');
   if(btn && !document.getElementById('work-badge')){
-    btn.insertAdjacentHTML('beforeend','<span id="work-badge" class="hidden" style="margin-left:auto;background:var(--coral-soft);color:var(--coral);font-size:11px;font-family:var(--font-mono);padding:2px 8px;border-radius:999px;"></span>');
+    btn.insertAdjacentHTML('beforeend','<span id="work-badge" class="hidden" style="margin-left:8px;background:var(--coral-soft);color:var(--coral);font-size:11px;font-family:var(--font-mono);padding:2px 8px;border-radius:999px;"></span>');
   }
   // อัปเดต badge ทุกครั้งที่โหลดงานใหม่หรือแก้ไขฟิลด์งาน (เช่น เปลี่ยนสถานะ)
   const _lt = loadTasks;
