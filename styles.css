@@ -1,15 +1,15 @@
 /* DoWork — styles.css  (ธีมจากโลโก้: ฟ้าพาสเทล / กรมท่า / ครีม / เหลือง / เขียวใบไม้)
    วางไว้ข้าง index.html (โลโก้ฝังในไฟล์นี้แล้ว ไม่ต้องใช้โฟลเดอร์ assets) */
 :root{
-  --bg:#DCEBFF;
+  --bg:#FFF4E6;
   --surface:#FFFFFF;
-  --surface-soft:#F1F6FF;
-  --cream:#FFF7EE;
-  --ink:#22305A;
-  --ink-soft:#6B7A9E;
-  --border:#C9D9F2;
-  --navy:#27437F;
-  --navy-deep:#1B2F5E;
+  --surface-soft:#FFF9F1;
+  --cream:#FFFBF5;
+  --ink:#4A2E1E;
+  --ink-soft:#82624C;
+  --border:#EBD5C0;
+  --navy:#6B4430;
+  --navy-deep:#4A2E1E;
   --coral:#F0644D;
   --coral-soft:#FFE3DC;
   --yellow:#FFC53D;
@@ -35,7 +35,7 @@
 *{box-sizing:border-box;}
 body{
   margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);-webkit-font-smoothing:antialiased;
-  background-image:radial-gradient(rgba(39,67,127,.10) 1.2px,transparent 1.2px);background-size:22px 22px;
+  background-image:radial-gradient(rgba(107,68,48,.08) 1.2px,transparent 1.2px);background-size:22px 22px;
 }
 h1,h2,h3,.brand,.nav-label,.stat-num{font-family:var(--font-display);}
 h1,h2,h3{color:var(--navy-deep);}
@@ -211,10 +211,10 @@ a{color:inherit;}
 .settings-panel .btn-primary{max-width:220px;}
 
 /* ---------- MODALS ---------- */
-.modal-overlay{position:fixed;inset:0;background:rgba(27,47,94,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;}
+.modal-overlay{position:fixed;inset:0;background:rgba(74,46,30,.5);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;}
 .modal{background:var(--cream);border:2px solid var(--navy);border-radius:var(--radius-lg);width:100%;max-width:520px;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-pop);}
 #task-modal .modal{max-width:760px;}
-.modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 24px;position:sticky;top:0;background:#B9D4F7;border-bottom:2px solid var(--navy);border-radius:22px 22px 0 0;z-index:2;}
+.modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 24px;position:sticky;top:0;background:#F9DCC8;border-bottom:2px solid var(--navy);border-radius:22px 22px 0 0;z-index:2;}
 .modal-head h2{font-size:20px;margin:0;}
 .modal-close{background:var(--surface);color:var(--navy);width:30px;height:30px;border-radius:50%;border:1.5px solid var(--navy);font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .modal-close:hover{background:var(--coral);color:#fff;}
@@ -237,7 +237,7 @@ a{color:inherit;}
 .btn-submit{flex:2;padding:12px;border-radius:var(--radius-sm);background:var(--yellow);color:var(--navy-deep);font-weight:800;font-size:14px;border:2px solid var(--navy);box-shadow:3px 3px 0 var(--navy);}
 .btn-submit:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--navy);}
 
-.notes-timeline{display:flex;flex-direction:column;gap:10px;margin:10px 0 16px;max-height:260px;overflow-y:auto;padding:0 4px 0 14px;border-left:3px solid #B9D4F7;}
+.notes-timeline{display:flex;flex-direction:column;gap:10px;margin:10px 0 16px;max-height:260px;overflow-y:auto;padding:0 4px 0 14px;border-left:3px solid #F9DCC8;}
 .note-item{position:relative;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px;}
 .note-item::before{content:'';position:absolute;left:-23px;top:14px;width:11px;height:11px;border-radius:50%;background:var(--yellow);border:2px solid var(--navy);}
 .note-date-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;}
@@ -254,7 +254,7 @@ a{color:inherit;}
 .note-add-row{display:flex;gap:8px;}
 .note-add-row textarea{flex:1;min-height:44px;}
 .note-add-row button{background:var(--yellow);color:var(--navy-deep);padding:0 16px;border-radius:var(--radius-sm);font-weight:700;font-size:13px;flex-shrink:0;border:1.5px solid var(--navy);}
-.danger-zone{margin-top:20px;border-top:1.5px dashed #B9D4F7;padding-top:16px;}
+.danger-zone{margin-top:20px;border-top:1.5px dashed #F9DCC8;padding-top:16px;}
 .btn-delete{background:none;color:var(--danger);font-size:13px;font-weight:700;padding:8px 0;}
 .btn-delete:hover{text-decoration:underline;}
 
@@ -274,7 +274,7 @@ a{color:inherit;}
 .link-cancel-btn:hover{background:var(--coral-soft) !important;color:var(--coral) !important;}
 
 #toast-container{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:100;display:flex;flex-direction:column;gap:8px;}
-.toast{background:var(--navy);color:#fff;padding:11px 20px;border-radius:999px;font-size:13.5px;font-weight:600;border:2px solid var(--yellow);box-shadow:3px 3px 0 rgba(27,47,94,.5);animation:toastIn .2s ease-out;}
+.toast{background:var(--navy);color:#fff;padding:11px 20px;border-radius:999px;font-size:13.5px;font-weight:600;border:2px solid var(--yellow);box-shadow:3px 3px 0 rgba(74,46,30,.4);animation:toastIn .2s ease-out;}
 @keyframes toastIn{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
 
 @media (max-width:860px){
@@ -297,10 +297,30 @@ a{color:inherit;}
 @media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important;}}
 
 /* ---------- สถานะ "พักไว้" + ปุ่มแสดง/ซ่อนส่วน ---------- */
-.status-hold{background:#E8EEF8;color:#4D5F8C;border-color:#8FA3CC;}
-.segmented button.sel-status[data-val="พักไว้"].active{background:#E8EEF8;border-color:#4D5F8C;color:#34476F;}
-.section-title.hold .count-pill{background:#6B7A9E;}
+.status-hold{background:#EFE6DC;color:#7A5F4D;border-color:#B89C86;}
+.segmented button.sel-status[data-val="พักไว้"].active{background:#EFE6DC;border-color:#7A5F4D;color:#5A4232;}
+.section-title.hold .count-pill{background:#9A7B66;}
 .section-toggle{margin-left:4px;background:var(--surface);border:1.5px solid var(--navy);color:var(--navy);font-size:12px;font-weight:700;padding:3px 12px;border-radius:999px;}
 .section-toggle:hover{background:var(--yellow);}
 .task-card.on-hold{background:var(--surface-soft);border-style:dashed;}
 @media (max-width:860px){.segmented button{font-size:12px;padding:9px 3px;}}
+
+/* ---------- ธีมครีม-พีช: sidebar สว่าง ตัวอักษรน้ำตาล (--navy / --navy-deep ตอนนี้คือสีน้ำตาลช็อกโกแลต) ---------- */
+.sidebar{background:#F9DCC8;color:var(--ink);border-right:3px solid var(--navy);}
+.brand{color:var(--navy-deep);}
+.brand-dot{border-color:var(--navy);}
+.nav-item{color:#7A5440;}
+.nav-item:hover{background:rgba(107,68,48,.10);color:var(--navy-deep);}
+.shortcut-section-label{color:#82624C;}
+.shortcut-add-btn{border-color:rgba(107,68,48,.45);color:var(--navy);}
+.shortcut-add-btn:hover{background:rgba(107,68,48,.10);}
+.sidebar-footer{border-top-color:rgba(107,68,48,.3);}
+.user-email{color:#82624C;}
+.logout-btn{color:#7A5440;}
+.logout-btn:hover{background:var(--coral);color:#fff;}
+@media (max-width:860px){
+  .mobile-topbar{background:#F9DCC8;border-bottom-color:var(--navy);}
+  .mobile-topbar .brand{color:var(--navy-deep);}
+  .mobile-topbar .logout-btn{color:var(--navy-deep);background:rgba(107,68,48,.12);}
+  .mobile-nav button{color:#7A5440;}
+}
