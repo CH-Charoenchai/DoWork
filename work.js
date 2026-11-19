@@ -34,6 +34,7 @@ function renderWork(){
     <div class="chip-row" id="work-chips"></div>
     <div class="quick-add">
       <input type="text" id="work-qa-title" placeholder="+ เพิ่มงานใหม่ แล้วกด Enter...">
+      <select id="work-qa-cat" aria-label="หมวดหมู่">${allKnownCategories().map(c=>`<option value="${escapeHtml(c)}" ${c===(workCategoryFilter||getLastCat())?'selected':''}>${escapeHtml(c)}</option>`).join('')}</select>
       <button type="button" class="btn-add" id="work-qa-btn">เพิ่ม</button>
     </div>
     <div id="work-lists"></div>
@@ -42,7 +43,7 @@ function renderWork(){
   $('#work-search').addEventListener('input', (e)=>{ workSearch = e.target.value; renderWorkLists(); });
   $('#work-cat-filter').addEventListener('change', (e)=>{ workCategoryFilter = e.target.value; renderWorkLists(); });
   const qa = $('#work-qa-title');
-  const doAdd = async ()=>{ const ok = await quickAddTask(qa.value, workCategoryFilter || 'Project'); if(ok){ const n = $('#work-qa-title'); if(n) n.focus(); } };
+  const doAdd = async ()=>{ const ok = await quickAddTask(qa.value, $('#work-qa-cat').value); if(ok){ const n = $('#work-qa-title'); if(n) n.focus(); } };
   $('#work-qa-btn').addEventListener('click', doAdd);
   qa.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); doAdd(); } });
 
