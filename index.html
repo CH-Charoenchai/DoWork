@@ -43,6 +43,7 @@
     <nav class="top-nav">
       <button class="nav-item active" data-view="home">Home</button>
       <button class="nav-item" data-view="work">Work</button>
+      <button class="nav-item" data-view="note">Note</button>
       <button class="nav-item" data-view="settings">Settings</button>
     </nav>
     <div class="shortcut-wrap">
@@ -58,8 +59,9 @@
     </div>
     <button class="add-btn" id="fab-add" title="เพิ่มงานใหม่">+ งานใหม่</button>
     <details class="user-menu">
-      <summary class="user-btn" title="บัญชี">👤</summary>
+      <summary class="user-btn" id="user-btn" title="บัญชี">👤</summary>
       <div class="user-pop">
+        <div class="user-name" id="user-name"></div>
         <div class="user-email" id="sidebar-email"></div>
         <button class="logout-btn" id="logout-btn">ออกจากระบบ</button>
         <button class="hidden" id="logout-btn-mobile" tabindex="-1" aria-hidden="true"></button>
@@ -70,12 +72,14 @@
   <main class="main">
     <div id="home-view"></div>
     <div id="work-view" class="hidden"></div>
+    <div id="note-view" class="hidden"></div>
     <div id="settings-view" class="hidden"></div>
   </main>
 
   <nav class="mobile-nav">
     <button class="active" data-view="home">Home</button>
     <button data-view="work">Work</button>
+    <button data-view="note">Note</button>
     <button data-view="settings">⚙️</button>
   </nav>
 </div>
@@ -228,6 +232,7 @@ const DEFAULT_CATEGORIES = ['Project','Meeting','Follow-up','Admin'];
 let userCategories = [...DEFAULT_CATEGORIES];
 let categoryColors = {};
 let userShortcuts = [];
+let userProfile = { name:'', avatar:'' };
 const MAX_SHORTCUTS = 8;
 const MAX_ICON_BYTES = 300 * 1024; // 300KB cap on custom uploaded icons
 const DEFAULT_CATEGORY_COLORS = { 'Project':'#7C6FFF', 'Meeting':'#FF8FA3', 'Follow-up':'#FFB84D', 'Admin':'#2FBFAE' };
@@ -534,9 +539,11 @@ async function loadSettings(){
     userCategories = data.categories && data.categories.length ? data.categories : [...DEFAULT_CATEGORIES];
     categoryColors = data.category_colors || {};
     userShortcuts = data.shortcuts || [];
+    userProfile = { name: data.display_name || '', avatar: data.avatar_url || '' };
   }
   updateCategoryList();
   renderShortcuts();
+  applyProfile();
   if(currentView==='settings') renderSettings();
 }
 
@@ -561,6 +568,8 @@ function escapeHtml(str){
 }
 
 // ---------- QUICK ADD / QUICK STATUS (ใช้ทั้ง Home และ Work) ----------
+function getLastCat(){ try{ return localStorage.getItem('dowork_last_cat') || ''; }catch(e){ return ''; } }
+function setLastCat(c){ try{ localStorage.setItem('dowork_last_cat', c); }catch(e){} }
 async function quickAddTask(title, category){
   title = (title || '').trim();
   if(!title) return false;
@@ -571,6 +580,7 @@ async function quickAddTask(title, category){
     sort_order: maxSort + 1
   });
   if(error){ showToast('เพิ่มงานไม่สำเร็จ: '+error.message); return false; }
+  setLastCat(category || 'Project');
   showToast('เพิ่มงานใหม่แล้ว ✨');
   await loadTasks();
   return true;
@@ -932,7 +942,7 @@ function renderHome(){
 
   el.innerHTML = `
     <div class="view-header">
-      <div><h1>วันนี้ต้องทำอะไรบ้าง</h1><div class="view-sub">${escapeHtml(today)} · ค้างอยู่ ${live.length} งาน</div></div>
+      <div><h1>วันนี้ต้องทำอะไรบ้าง</h1><div class="view-sub">${userProfile.name ? 'สวัสดี '+escapeHtml(userProfile.name)+' · ' : ''}${escapeHtml(today)} · ค้างอยู่ ${live.length} งาน</div></div>
       <div class="header-actions">
         <div class="range-toggle" id="range-toggle">
           <button data-r="month" class="${homeRange==='month'?'active':''}">เดือนนี้</button>
@@ -945,7 +955,7 @@ function renderHome(){
 
     <div class="quick-add">
       <input type="text" id="qa-title" placeholder="พิมพ์ชื่องานแล้วกด Enter เพื่อเพิ่มเร็วๆ...">
-      <select id="qa-cat" aria-label="หมวดหมู่">${allKnownCategories().map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}</select>
+      <select id="qa-cat" aria-label="หมวดหมู่">${allKnownCategories().map(c=>`<option value="${escapeHtml(c)}" ${c===getLastCat()?'selected':''}>${escapeHtml(c)}</option>`).join('')}</select>
       <button type="button" class="btn-add" id="qa-btn">เพิ่ม</button>
     </div>
 
@@ -1151,44 +1161,134 @@ function categoryBarsHtml(list){
   `).join('');
 }
 
+// ---------- PROFILE (ชื่อ + รูป) ----------
+function profileInitial(){
+  return ((userProfile.name || (currentUser && currentUser.email) || '?').trim().charAt(0) || '?').toUpperCase();
+}
+function avatarHtml(){
+  return userProfile.avatar ? `<img src="${escapeHtml(userProfile.avatar)}" alt="">` : `<span>${escapeHtml(profileInitial())}</span>`;
+}
+function applyProfile(){
+  const b = $('#user-btn'); if(b) b.innerHTML = avatarHtml();
+  const n = $('#user-name'); if(n) n.textContent = userProfile.name || '';
+  const big = $('#avatar-btn'); if(big) big.innerHTML = avatarHtml();
+}
+async function saveProfile(patch){
+  const cols = {};
+  if('name' in patch) cols.display_name = patch.name;
+  if('avatar' in patch) cols.avatar_url = patch.avatar;
+  const { error } = await sb.from('app_settings').update({ ...cols, updated_at: new Date().toISOString() }).eq('user_id', currentUser.id);
+  if(error){ showToast('บันทึกโปรไฟล์ไม่สำเร็จ: '+error.message+' (ต้องรัน note_setup.sql ก่อน)'); return false; }
+  Object.assign(userProfile, patch);
+  applyProfile();
+  return true;
+}
+function resizeAvatar(file){
+  return new Promise((resolve, reject)=>{
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = ()=>{
+      const side = Math.min(img.width, img.height);
+      const c = document.createElement('canvas'); c.width = c.height = 256;
+      c.getContext('2d').drawImage(img, (img.width-side)/2, (img.height-side)/2, side, side, 0, 0, 256, 256);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); reject(new Error('อ่านรูปไม่สำเร็จ')); };
+    img.src = url;
+  });
+}
+
 // ---------- RENDER: SETTINGS VIEW ----------
 function renderSettings(){
   const el = $('#settings-view');
   el.innerHTML = `
     <div class="view-header">
-      <div><h1>Settings</h1><div class="view-sub">จัดการหมวดหมู่งานและบัญชีของคุณ</div></div>
+      <div><h1>Settings</h1><div class="view-sub">ตั้งค่าโปรไฟล์ หมวดหมู่งาน และบัญชีของคุณ</div></div>
     </div>
 
-    <div class="settings-panel">
-      <h3>หมวดหมู่งาน</h3>
-      <p class="settings-sub">แก้ชื่อ ลบ หรือเพิ่มหมวดหมู่ใหม่ได้ตามต้องการ (แก้ชื่อจะอัปเดตงานเดิมที่ใช้หมวดนี้ให้ด้วย)</p>
-      <div id="cat-list"></div>
-      <div class="cat-add-row">
-        <input type="text" id="cat-new-input" placeholder="เพิ่มหมวดหมู่ใหม่...">
-        <button type="button" id="cat-add-btn">เพิ่ม</button>
+    <div class="settings-grid">
+      <div class="settings-col">
+        <div class="settings-panel">
+          <h3>โปรไฟล์</h3>
+          <p class="settings-sub">รูปและชื่อจะแสดงที่มุมขวาบนและในหน้า Home</p>
+          <div class="profile-row">
+            <button type="button" class="avatar-big" id="avatar-btn" title="เปลี่ยนรูป">${avatarHtml()}</button>
+            <div class="profile-fields">
+              <label for="profile-name">ชื่อที่แสดง</label>
+              <input type="text" id="profile-name" maxlength="40" placeholder="เช่น ต้น" value="${escapeHtml(userProfile.name)}">
+              <div class="avatar-actions">
+                <button type="button" class="btn-ghost sm" id="avatar-upload">อัปโหลดรูป</button>
+                <button type="button" class="btn-ghost sm" id="avatar-remove">ลบรูป</button>
+              </div>
+            </div>
+          </div>
+          <input type="file" id="avatar-input" accept="image/*" class="hidden">
+        </div>
+
+        <div class="settings-panel">
+          <h3>บัญชีและรหัสผ่าน</h3>
+          <p class="settings-sub">อีเมลที่ใช้เข้าสู่ระบบ: <b>${escapeHtml(currentUser.email)}</b></p>
+          <form id="pw-form" autocomplete="off">
+            <div class="form-row">
+              <label for="pw-new">รหัสผ่านใหม่</label>
+              <div class="pw-wrap"><input type="password" id="pw-new" minlength="6" required autocomplete="new-password" placeholder="อย่างน้อย 6 ตัวอักษร"><button type="button" class="pw-eye" data-target="pw-new">แสดง</button></div>
+            </div>
+            <div class="form-row">
+              <label for="pw-confirm">ยืนยันรหัสผ่านใหม่</label>
+              <div class="pw-wrap"><input type="password" id="pw-confirm" minlength="6" required autocomplete="new-password" placeholder="พิมพ์อีกครั้ง"><button type="button" class="pw-eye" data-target="pw-confirm">แสดง</button></div>
+            </div>
+            <div class="pw-hint" id="pw-hint">อย่างน้อย 6 ตัวอักษร</div>
+            <div id="pw-message"></div>
+            <button type="submit" class="btn-primary" id="pw-submit" disabled>บันทึกรหัสผ่านใหม่</button>
+          </form>
+        </div>
       </div>
-    </div>
 
-    <div class="settings-panel">
-      <h3>เปลี่ยนรหัสผ่าน</h3>
-      <p class="settings-sub">ตั้งรหัสผ่านใหม่สำหรับบัญชี ${escapeHtml(currentUser.email)}</p>
-      <form id="pw-form">
-        <div class="form-row">
-          <label>รหัสผ่านใหม่</label>
-          <input type="password" id="pw-new" minlength="6" required placeholder="อย่างน้อย 6 ตัวอักษร">
+      <div class="settings-col">
+        <div class="settings-panel">
+          <h3>หมวดหมู่งาน</h3>
+          <p class="settings-sub">กดวงกลมเพื่อเปลี่ยนสี · พิมพ์แก้ชื่อได้ในแถว (งานเดิมจะอัปเดตตาม) · ลากเพื่อจัดลำดับ</p>
+          <div class="cat-add-row top">
+            <input type="text" id="cat-new-input" placeholder="เพิ่มหมวดหมู่ใหม่ แล้วกด Enter...">
+            <button type="button" id="cat-add-btn">เพิ่ม</button>
+          </div>
+          <div id="cat-list"></div>
         </div>
-        <div class="form-row">
-          <label>ยืนยันรหัสผ่านใหม่</label>
-          <input type="password" id="pw-confirm" minlength="6" required placeholder="พิมพ์อีกครั้ง">
-        </div>
-        <div id="pw-message"></div>
-        <button type="submit" class="btn-primary">บันทึกรหัสผ่านใหม่</button>
-      </form>
+      </div>
     </div>
   `;
   renderCatList();
 
-  $('#cat-add-btn').addEventListener('click', ()=>{
+  // --- โปรไฟล์ ---
+  const pickAvatar = ()=> $('#avatar-input').click();
+  $('#avatar-btn').addEventListener('click', pickAvatar);
+  $('#avatar-upload').addEventListener('click', pickAvatar);
+  $('#avatar-input').addEventListener('change', async (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    if(!file.type.startsWith('image/')){ showToast('เลือกไฟล์รูปภาพเท่านั้นนะ'); return; }
+    if(file.size > 8*1024*1024){ showToast('ไฟล์ใหญ่เกินไป (จำกัด 8MB)'); return; }
+    try{
+      const dataUrl = await resizeAvatar(file);
+      if(await saveProfile({ avatar: dataUrl })) showToast('อัปเดตรูปโปรไฟล์แล้ว ✓');
+    } catch(err){ showToast(err.message || 'อัปโหลดรูปไม่สำเร็จ'); }
+    e.target.value = '';
+  });
+  $('#avatar-remove').addEventListener('click', async ()=>{
+    if(!userProfile.avatar) return;
+    if(await saveProfile({ avatar: '' })) showToast('ลบรูปแล้ว');
+  });
+  const nameInput = $('#profile-name');
+  nameInput.addEventListener('change', async ()=>{
+    const v = nameInput.value.trim();
+    if(v === userProfile.name) return;
+    if(await saveProfile({ name: v })) showToast('บันทึกชื่อแล้ว ✓');
+  });
+  nameInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); nameInput.blur(); } });
+
+  // --- หมวดหมู่ ---
+  const addCat = ()=>{
     const input = $('#cat-new-input');
     const val = input.value.trim();
     if(!val) return;
@@ -1197,17 +1297,36 @@ function renderSettings(){
     input.value = '';
     renderCatList();
     showToast('เพิ่มหมวดหมู่แล้ว');
-  });
+  };
+  $('#cat-add-btn').addEventListener('click', addCat);
+  $('#cat-new-input').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); addCat(); } });
 
+  // --- รหัสผ่าน ---
+  const pw1 = $('#pw-new'), pw2 = $('#pw-confirm'), hint = $('#pw-hint'), submit = $('#pw-submit');
+  function checkPw(){
+    let ok = false, msg = 'อย่างน้อย 6 ตัวอักษร', cls = '';
+    if(pw1.value.length >= 6 && !pw2.value){ msg = 'พิมพ์ยืนยันรหัสผ่านอีกครั้ง'; }
+    else if(pw1.value.length >= 6 && pw1.value !== pw2.value){ msg = 'รหัสผ่านทั้งสองช่องยังไม่ตรงกัน'; cls = 'bad'; }
+    else if(pw1.value.length >= 6){ msg = 'ตรงกันแล้ว ✓'; cls = 'ok'; ok = true; }
+    hint.textContent = msg; hint.className = 'pw-hint ' + cls;
+    submit.disabled = !ok;
+  }
+  pw1.addEventListener('input', checkPw); pw2.addEventListener('input', checkPw);
+  $all('.pw-eye').forEach(btn=> btn.addEventListener('click', ()=>{
+    const inp = document.getElementById(btn.dataset.target);
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    btn.textContent = show ? 'ซ่อน' : 'แสดง';
+  }));
   $('#pw-form').addEventListener('submit', async (e)=>{
     e.preventDefault();
-    const pw1 = $('#pw-new').value, pw2 = $('#pw-confirm').value;
     $('#pw-message').innerHTML = '';
-    if(pw1 !== pw2){ $('#pw-message').innerHTML = '<div class="auth-error">รหัสผ่านไม่ตรงกัน</div>'; return; }
-    const { error } = await sb.auth.updateUser({ password: pw1 });
-    if(error){ $('#pw-message').innerHTML = `<div class="auth-error">${escapeHtml(error.message)}</div>`; return; }
+    if(pw1.value !== pw2.value){ $('#pw-message').innerHTML = '<div class="auth-error">รหัสผ่านไม่ตรงกัน</div>'; return; }
+    submit.disabled = true;
+    const { error } = await sb.auth.updateUser({ password: pw1.value });
+    if(error){ $('#pw-message').innerHTML = `<div class="auth-error">${escapeHtml(error.message)}</div>`; checkPw(); return; }
     $('#pw-message').innerHTML = '<div class="auth-hint">เปลี่ยนรหัสผ่านสำเร็จแล้ว ✓</div>';
-    $('#pw-form').reset();
+    $('#pw-form').reset(); checkPw();
   });
 }
 
@@ -1217,6 +1336,7 @@ function renderCatList(){
       <span class="cat-drag-handle" title="ลากเพื่อจัดลำดับ">⠿</span>
       <input type="color" class="cat-color-input" value="${colorForCategory(c)}" data-cat="${escapeHtml(c)}">
       <input type="text" value="${escapeHtml(c)}" data-orig="${escapeHtml(c)}">
+      <span class="cat-count" title="จำนวนงานในหมวดนี้">${tasksCache.filter(t=>t.category===c).length} งาน</span>
       <button type="button" class="cat-icon-btn cat-delete" title="ลบ">🗑</button>
     </div>
   `).join('');
@@ -1257,7 +1377,8 @@ function renderCatList(){
     btn.addEventListener('click', ()=>{
       const row = btn.closest('.cat-row');
       const val = row.querySelector('input[type=text]').dataset.orig;
-      if(!confirm(`ลบหมวดหมู่ "${val}" ออกจากรายการ? (งานเดิมที่ใช้หมวดนี้จะยังอยู่ ไม่หาย)`)) return;
+      const used = tasksCache.filter(t=>t.category===val).length;
+      if(!confirm(`ลบหมวดหมู่ "${val}" ออกจากรายการ?` + (used ? `\nมีงาน ${used} งานใช้หมวดนี้อยู่ งานเหล่านั้นจะยังอยู่ ไม่หาย` : ''))) return;
       saveCategories(userCategories.filter(c=>c!==val));
       renderCatList();
       showToast('ลบหมวดหมู่แล้ว');
@@ -1319,6 +1440,7 @@ function wireCategoryDragAndDrop(){
    <script src="auth.js"></script>
    <script src="work.js"></script>
    <script src="routine.js"></script>
+   <script src="note.js"></script>
 
 </body>
 </html>
