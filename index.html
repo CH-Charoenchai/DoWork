@@ -244,6 +244,62 @@ const URGENCY_COLOR = { 'ด่วนมาก':'var(--coral)', 'ปกติ':'
 const IMPACT_SIZE = { 'สูง':18, 'กลาง':14, 'ต่ำ':10 };
 const STATUS_CLASS = { 'ยังไม่ทำ':'status-todo', 'กำลังทำ':'status-doing', 'พักไว้':'status-hold', 'เสร็จแล้ว':'status-done' };
 
+// ---------- กล่องโต้ตอบของแอป (แทน confirm / prompt ของเบราว์เซอร์) ----------
+function uiDialog({ title, message, confirmText, cancelText, danger, input }){
+  return new Promise((resolve)=>{
+    const prevFocus = document.activeElement;
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay ui-dialog';
+    ov.innerHTML = `
+      <div class="modal ui-modal" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}">
+        <div class="modal-head"><h2>${escapeHtml(title)}</h2></div>
+        <div class="modal-body">
+          ${message ? `<p class="ui-msg">${escapeHtml(message)}</p>` : ''}
+          ${input ? `<input type="text" class="ui-input" value="${escapeHtml(input.value||'')}" placeholder="${escapeHtml(input.placeholder||'')}" maxlength="120">` : ''}
+          <div class="modal-actions">
+            <button type="button" class="btn-ghost" data-ui="cancel">${escapeHtml(cancelText||'ยกเลิก')}</button>
+            <button type="button" class="${danger?'btn-danger':'btn-submit'}" data-ui="ok">${escapeHtml(confirmText||'ตกลง')}</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const field = ov.querySelector('.ui-input');
+    const okBtn = ov.querySelector('[data-ui="ok"]'), cancelBtn = ov.querySelector('[data-ui="cancel"]');
+    function close(result){
+      document.removeEventListener('keydown', onKey, true);
+      ov.remove();
+      if(prevFocus && prevFocus.focus) try{ prevFocus.focus(); }catch(e){}
+      resolve(result);
+    }
+    const ok = ()=> close(field ? field.value : true);
+    const cancel = ()=> close(field ? null : false);
+    function onKey(e){
+      if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); cancel(); }
+      else if(e.key === 'Enter' && document.activeElement !== cancelBtn){ e.preventDefault(); e.stopPropagation(); ok(); }
+      else if(e.key === 'Tab'){
+        const items = [...ov.querySelectorAll('input,button')];
+        const i = items.indexOf(document.activeElement);
+        e.preventDefault();
+        items[(i + (e.shiftKey ? -1 : 1) + items.length) % items.length].focus();
+      }
+    }
+    document.addEventListener('keydown', onKey, true);
+    ov.addEventListener('mousedown', (e)=>{ if(e.target === ov) cancel(); });
+    okBtn.addEventListener('click', ok);
+    cancelBtn.addEventListener('click', cancel);
+    if(field){ field.focus(); field.select(); }
+    else (danger ? cancelBtn : okBtn).focus();
+  });
+}
+function uiConfirm(message, opts){
+  opts = opts || {};
+  return uiDialog({ title: opts.title || 'ยืนยัน', message, confirmText: opts.confirmText, cancelText: opts.cancelText, danger: !!opts.danger });
+}
+function uiPrompt(title, value, opts){
+  opts = opts || {};
+  return uiDialog({ title, message: opts.message, confirmText: opts.confirmText, cancelText: opts.cancelText, input: { value: value || '', placeholder: opts.placeholder } });
+}
+
 // ---------- helpers ----------
 function $(sel){ return document.querySelector(sel); }
 function $all(sel){ return document.querySelectorAll(sel); }
@@ -881,7 +937,7 @@ $('#tm-note-submit').addEventListener('click', async ()=>{
 });
 
 $('#tm-delete-btn').addEventListener('click', async ()=>{
-  if(!confirm('ลบงานนี้ทั้งหมด รวมถึงโน้ตทั้งหมดด้วยเลยไหม? ย้อนกลับไม่ได้นะ')) return;
+  if(!await uiConfirm('งานนี้และโน้ตทั้งหมดของงานนี้จะถูกลบถาวร\nย้อนกลับไม่ได้นะ', { title:'ลบงานนี้?', confirmText:'ลบงาน', danger:true })) return;
   const { error } = await sb.from('tasks').delete().eq('id', activeTaskId);
   if(error){ showToast('ลบไม่สำเร็จ: '+error.message); return; }
   $('#task-modal').classList.add('hidden');
@@ -1374,11 +1430,11 @@ function renderCatList(){
   });
 
   $all('.cat-delete').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
+    btn.addEventListener('click', async ()=>{
       const row = btn.closest('.cat-row');
       const val = row.querySelector('input[type=text]').dataset.orig;
       const used = tasksCache.filter(t=>t.category===val).length;
-      if(!confirm(`ลบหมวดหมู่ "${val}" ออกจากรายการ?` + (used ? `\nมีงาน ${used} งานใช้หมวดนี้อยู่ งานเหล่านั้นจะยังอยู่ ไม่หาย` : ''))) return;
+      if(!await uiConfirm(used ? `มี ${used} งานใช้หมวดนี้อยู่ งานเหล่านั้นจะยังอยู่ ไม่หาย` : 'หมวดหมู่นี้จะถูกลบออกจากรายการ', { title:`ลบหมวดหมู่ "${val}"?`, confirmText:'ลบหมวดหมู่', danger:true })) return;
       saveCategories(userCategories.filter(c=>c!==val));
       renderCatList();
       showToast('ลบหมวดหมู่แล้ว');
