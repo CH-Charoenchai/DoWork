@@ -115,7 +115,7 @@ function renderWorkLists(){
     const force = !!(q || workCategoryFilter);
 
     html = `<div class="section-title">ยังไม่เสร็จ <span class="count-pill">${active.length}</span></div>`;
-    html += active.length ? `<div class="task-list" data-group="active">${active.map(taskCardHtml).join('')}</div>` : emptyStateHtml('ไม่มีงานค้าง เยี่ยมมาก! 🎉');
+    html += active.length ? `<div class="task-list" data-group="active">${active.map(taskCardHtml).join('')}</div>` : emptyStateHtml(tasksCache.length ? 'ไม่มีงานค้าง เยี่ยมมาก! 🎉' : 'ยังไม่มีงาน — พิมพ์ชื่องานในช่องด้านบนแล้วกด Enter ได้เลย');
     if(hold.length) html += collapsibleSection('hold', 'พักไว้', 'hold', hold, 'ไม่มีงานที่พักไว้', force);
     html += collapsibleSection('done', 'เสร็จแล้ว', 'done', done, 'ยังไม่มีงานที่เสร็จในตอนนี้', force);
   }
