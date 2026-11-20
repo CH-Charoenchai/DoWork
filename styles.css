@@ -452,3 +452,14 @@ a{color:inherit;}
 /* ช่องรหัสผ่านให้หน้าตาเหมือนช่องอื่น */
 .form-row input[type=password]{width:100%;padding:11px 13px;border-radius:var(--radius-sm);border:1.5px solid var(--navy);background:var(--surface);font-size:14px;color:var(--ink);outline:none;}
 .form-row input[type=password]:focus{box-shadow:0 0 0 3px rgba(255,197,61,.6);}
+
+/* ---------- กล่องโต้ตอบของแอป (ยืนยัน / กรอกข้อความ) ---------- */
+.ui-dialog{z-index:300;}
+.ui-modal{max-width:420px;animation:uiPop .15s ease-out;}
+.ui-modal .modal-head{position:static;}
+.ui-msg{margin:0 0 14px;white-space:pre-line;line-height:1.6;font-size:14.5px;color:var(--ink);}
+.ui-input{width:100%;padding:11px 13px;border:1.5px solid var(--navy);border-radius:var(--radius-sm);font-size:14.5px;outline:none;background:var(--surface);color:var(--ink);}
+.ui-input:focus{box-shadow:0 0 0 3px rgba(255,197,61,.6);}
+.btn-danger{flex:2;padding:12px;border-radius:var(--radius-sm);background:var(--coral);color:#fff;font-weight:800;font-size:14px;border:2px solid var(--navy);box-shadow:3px 3px 0 var(--navy);}
+.btn-danger:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--navy);}
+@keyframes uiPop{from{opacity:0;transform:translateY(8px) scale(.98);}to{opacity:1;transform:none;}}
