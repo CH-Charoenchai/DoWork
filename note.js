@@ -146,7 +146,7 @@ function renderBooks(){
   }));
 }
 async function addBook(){
-  const name = (prompt('ชื่อสมุดโน้ตใหม่') || '').trim();
+  const name = ((await uiPrompt('สมุดโน้ตใหม่', '', { placeholder:'ชื่อสมุด เช่น งานประจำ', confirmText:'สร้างสมุด' })) || '').trim();
   if(!name) return;
   const max = N.books.reduce((m,b)=>Math.max(m,b.sort_order||0),0);
   const { data, error } = await sb.from('note_notebooks').insert({ user_id: currentUser.id, name, color: COLORS[N.books.length % COLORS.length], sort_order: max+1 }).select().single();
@@ -156,7 +156,7 @@ async function addBook(){
 }
 async function renameBook(id){
   const b = N.books.find(x=>x.id===id); if(!b) return;
-  const name = (prompt('เปลี่ยนชื่อสมุด', b.name) || '').trim();
+  const name = ((await uiPrompt('เปลี่ยนชื่อสมุด', b.name, { confirmText:'บันทึก' })) || '').trim();
   if(!name || name === b.name) return;
   const { error } = await sb.from('note_notebooks').update({ name }).eq('id', id);
   if(error){ showToast('เปลี่ยนชื่อไม่สำเร็จ: '+error.message); return; }
@@ -165,7 +165,7 @@ async function renameBook(id){
 async function deleteBook(id){
   const b = N.books.find(x=>x.id===id); if(!b) return;
   const n = N.notes.filter(x=>x.notebook_id===id).length;
-  if(!confirm(`ลบสมุด "${b.name}"?` + (n ? `\nโน้ต ${n} รายการในสมุดนี้จะยังอยู่ แต่ไม่อยู่ในสมุดใด` : ''))) return;
+  if(!await uiConfirm(n ? `โน้ต ${n} รายการในสมุดนี้จะยังอยู่ แต่ไม่อยู่ในสมุดใด` : 'สมุดนี้ยังไม่มีโน้ต', { title:`ลบสมุด "${b.name}"?`, confirmText:'ลบสมุด', danger:true })) return;
   const { error } = await sb.from('note_notebooks').delete().eq('id', id);
   if(error){ showToast('ลบสมุดไม่สำเร็จ: '+error.message); return; }
   N.books = N.books.filter(x=>x.id!==id);
@@ -211,7 +211,7 @@ async function newNote(){
 }
 async function deleteNote(){
   const n = current(); if(!n) return;
-  if(!confirm(`ลบโน้ต "${n.title || 'ไม่มีชื่อ'}"? ย้อนกลับไม่ได้นะ`)) return;
+  if(!await uiConfirm(`"${n.title || 'ไม่มีชื่อ'}" จะถูกลบถาวร ย้อนกลับไม่ได้นะ`, { title:'ลบโน้ตนี้?', confirmText:'ลบโน้ต', danger:true })) return;
   const { error } = await sb.from('notes').delete().eq('id', n.id);
   if(error){ showToast('ลบไม่สำเร็จ: '+error.message); return; }
   dirty = false; N.notes = N.notes.filter(x=>x.id!==n.id);
@@ -253,7 +253,7 @@ function insertChecklist(){
   const d = makeCk(blk.innerHTML === '<br>' ? '' : blk.innerHTML);
   blk.replaceWith(d); placeCaret(d.querySelector('.ck-text'), true);
 }
-function exec(cmd){
+async function exec(cmd){
   const docEl = $id('note-doc'); if(!docEl) return;
   docEl.focus();
   if(cmd === 'bold') document.execCommand('bold');
@@ -262,8 +262,13 @@ function exec(cmd){
   else if(cmd === 'ul') document.execCommand('insertUnorderedList');
   else if(cmd === 'check') insertChecklist();
   else if(cmd === 'link'){
-    const url = prompt('วางลิงก์ เช่น https://...'); if(!url) return;
-    docEl.focus(); document.execCommand('createLink', false, normalizeUrl(url));
+    const sel = window.getSelection();
+    const saved = sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+    const url = await uiPrompt('เพิ่มลิงก์', '', { placeholder:'วางลิงก์ เช่น https://...', confirmText:'เพิ่มลิงก์' });
+    if(!url || !url.trim()) return;
+    docEl.focus();
+    if(saved){ sel.removeAllRanges(); sel.addRange(saved); }
+    document.execCommand('createLink', false, normalizeUrl(url));
   }
   else if(cmd === 'pin') return togglePinNote();
   else if(cmd === 'del') return deleteNote();
