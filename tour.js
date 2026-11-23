@@ -63,7 +63,7 @@ function openGuide(mode){
           <div class="guide-row"><span class="guide-ic">🏠</span><div><b>Home</b><span class="t">ดูภาพรวม งานที่ใกล้ครบกำหนด และเพิ่มงานเร็วๆ ได้ทันที</span></div></div>
           <div class="guide-row"><span class="guide-ic">📋</span><div><b>Work</b><span class="t">จัดการงานทั้งหมด ลากเรียง ติ๊กให้เสร็จ หรือกด “พักไว้” ถ้ายังไม่พร้อมทำ</span></div></div>
           <div class="guide-row"><span class="guide-ic">🔁</span><div><b>Routine</b><span class="t">งานประจำรายสัปดาห์ เดือน หรือไตรมาส เช็คลิสต์รีเซ็ตเองทุกรอบ</span></div></div>
-          <div class="guide-row"><span class="guide-ic">📝</span><div><b>Note</b><span class="t">จดโน้ตแบบ OneNote แยกเป็นสมุด บันทึกให้อัตโนมัติ</span></div></div>
+          <div class="guide-row"><span class="guide-ic">📝</span><div><b>Note</b><span class="t">จดโน้ตแยกเป็นสมุด ปรับสีและลากสลับตำแหน่งได้ บันทึกให้อัตโนมัติ</span></div></div>
           <div class="guide-row"><span class="guide-ic">🔗</span><div><b>ทางลัด</b><span class="t">เก็บลิงก์เว็บหรือเอกสารที่เปิดบ่อยไว้ที่แถบด้านบน</span></div></div>
         </div>
         <p class="guide-note">อยากลองใช้จริง? ให้แอปพาทำทีละขั้น ใช้เวลาประมาณ 2–3 นาที</p>
