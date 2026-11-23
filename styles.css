@@ -505,3 +505,32 @@ a{color:inherit;}
 .guide-ic{font-size:22px;line-height:1.2;}
 .guide-row b{display:block;color:var(--navy-deep);}
 .guide-row .t{font-size:13px;color:var(--ink-soft);line-height:1.5;}
+
+/* ---------- สอนแบบพาทำ (spotlight) ---------- */
+.tour-root{position:fixed;inset:0;z-index:400;pointer-events:none;}
+.tour-dim{position:fixed;inset:0;background:rgba(27,47,94,.6);pointer-events:auto;display:none;}
+.tour-block{position:fixed;background:transparent;pointer-events:auto;display:none;}
+.tour-hole{position:fixed;display:none;border:3px solid var(--yellow);border-radius:12px;box-shadow:0 0 0 9999px rgba(27,47,94,.6);pointer-events:none;transition:top .2s,left .2s,width .2s,height .2s;animation:tourPulse 1.6s ease-in-out infinite;}
+.tour-hole.ok{border-color:var(--mint);animation:none;}
+@keyframes tourPulse{50%{border-color:#fff;}}
+.tour-tip{position:fixed;z-index:2;pointer-events:auto;background:#fff;border:2px solid var(--navy);border-radius:16px;box-shadow:4px 4px 0 var(--navy);padding:14px 16px;width:min(340px,calc(100vw - 24px));}
+.tour-tip.center{width:min(400px,calc(100vw - 24px));text-align:center;}
+.tour-step{font-size:12px;font-weight:700;color:var(--ink-soft);}
+.tour-prog{height:6px;border:1.5px solid var(--navy);border-radius:999px;background:#fff;margin:6px 0 10px;overflow:hidden;}
+.tour-prog i{display:block;height:100%;background:var(--purple);border-radius:999px;}
+.tour-tip h4{margin:0 0 4px;font-family:var(--font-display);font-size:18px;color:var(--navy-deep);}
+.tour-tip p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink);}
+.tour-made{margin-top:8px !important;font-size:12.5px !important;color:var(--ink-soft) !important;}
+.tour-miss{margin-top:8px;font-size:12.5px;color:#B8341F;font-weight:600;}
+.tour-ok{margin-top:8px;font-size:13px;color:#2F7A3B;font-weight:800;}
+.tour-actions{display:flex;gap:8px;justify-content:space-between;margin-top:12px;flex-wrap:wrap;}
+.tour-tip.center .tour-actions{justify-content:center;}
+.tour-btn{background:none;border:1.5px solid var(--navy);border-radius:10px;padding:7px 12px;font-weight:700;font-size:12.5px;color:var(--navy-deep);}
+.tour-btn:hover{background:var(--surface-soft);}
+.tour-btn.pri{background:var(--yellow);box-shadow:2px 2px 0 var(--navy);}
+.tour-btn:disabled{opacity:.6;}
+.guide-note{margin:6px 0 0;text-align:center;font-size:13px;color:var(--ink-soft);}
+.onb-head-actions{display:flex;gap:6px;align-items:center;flex-shrink:0;}
+.onb-tour{background:var(--yellow);color:var(--navy-deep);border:1.5px solid var(--navy);border-radius:999px;padding:5px 12px;font-weight:800;font-size:12.5px;box-shadow:2px 2px 0 var(--navy);}
+.onb-list.one{grid-template-columns:1fr;margin-top:12px;}
+.modal-actions .btn-ghost{white-space:nowrap;}
