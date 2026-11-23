@@ -1,8 +1,11 @@
-/* DoWork — Note module (หน้าโน้ตแบบ OneNote: สมุด · รายการ · ที่เขียน)
+/* DoWork — Note module (หน้าโน้ต: สมุด · รายการ · ที่เขียน)
    วางไว้ข้าง index.html · ต้องรัน note_setup.sql ใน Supabase ก่อน */
 (function(){
 'use strict';
-const N = { books:[], notes:[], selBook:'', selId:null, q:'', loaded:false, error:null };
+const N = { books:[], notes:[], selBook:'', selId:null, q:'', loaded:false, error:null, sort:'recent', warned:{} };
+try{ N.sort = localStorage.getItem('dowork_note_sort') === 'custom' ? 'custom' : 'recent'; }catch(e){}
+const PALETTE = ['#4A74D0','#5FB46A','#F0644D','#FFC53D','#F4A58F','#8A6FD8','#2FBFAE','#8A84A0'];
+const FS = [{ v:13, l:'เล็ก' }, { v:15, l:'ปกติ' }, { v:18, l:'ใหญ่' }, { v:22, l:'ใหญ่มาก' }];
 const COLORS = ['#4A74D0','#5FB46A','#F0644D','#FFC53D','#F4A58F','#8A6FD8'];
 let built = false, saveTimer = null, dirty = false;
 const view = document.getElementById('note-view');
@@ -81,8 +84,154 @@ function visible(){
     return true;
   }).sort((a,b)=>{
     if(!!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1;
+    if(N.sort === 'custom'){
+      const oa = a.sort_order == null ? -1e9 : a.sort_order, ob = b.sort_order == null ? -1e9 : b.sort_order;
+      if(oa !== ob) return oa - ob;
+    }
     return new Date(b.updated_at) - new Date(a.updated_at);
   });
+}
+
+/* ---------- ลาก/สลับตำแหน่ง (ใช้ร่วมกันทั้งสมุดและโน้ต) ---------- */
+function wireDnD(root, sel, opts){
+  let srcId = null;
+  const clear = () => root.querySelectorAll('.drop-before,.drop-after').forEach(x => x.classList.remove('drop-before','drop-after'));
+  const isAfter = (e, el) => { const r = el.getBoundingClientRect(); return e.clientY > r.top + r.height / 2; };
+  root.querySelectorAll(sel).forEach(el=>{
+    el.addEventListener('dragstart', e=>{
+      srcId = el.dataset.id; el.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try{ e.dataTransfer.setData('text/plain', srcId); }catch(err){}
+    });
+    el.addEventListener('dragend', ()=>{ el.classList.remove('dragging'); clear(); srcId = null; });
+    el.addEventListener('dragover', e=>{
+      if(!srcId || srcId === el.dataset.id) return;
+      if(opts.canDrop && !opts.canDrop(srcId, el.dataset.id)) return;
+      e.preventDefault(); clear();
+      el.classList.add(isAfter(e, el) ? 'drop-after' : 'drop-before');
+    });
+    el.addEventListener('dragleave', ()=> el.classList.remove('drop-before','drop-after'));
+    el.addEventListener('drop', e=>{
+      e.preventDefault();
+      const after = isAfter(e, el), from = srcId; clear(); srcId = null;
+      if(from && from !== el.dataset.id && (!opts.canDrop || opts.canDrop(from, el.dataset.id))) opts.onDrop(from, el.dataset.id, after);
+    });
+  });
+}
+async function saveOrders(table, rows, what){
+  const results = await Promise.all(rows.map(r => sb.from(table).update({ sort_order: r.sort_order }).eq('id', r.id)));
+  if(results.some(r => r.error) && !N.warned[what]){
+    N.warned[what] = true;
+    showToast('บันทึกลำดับไม่สำเร็จ — ต้องรัน note_setup.sql ก่อน (ลำดับจะอยู่ถึงรีเฟรชหน้า)');
+  }
+}
+function setSort(mode){
+  N.sort = mode;
+  try{ localStorage.setItem('dowork_note_sort', mode); }catch(e){}
+  renderSortBar(); renderList();
+}
+// ให้ทุกโน้ตมีลำดับของตัวเอง โดยเริ่มจากลำดับที่เห็นอยู่ (ล่าสุดก่อน) และคงลำดับเดิมของที่เรียงไว้แล้ว
+async function ensureCustomOrder(){
+  const nulls = N.notes.filter(n=>n.sort_order == null).sort((a,b)=> new Date(b.updated_at) - new Date(a.updated_at));
+  const rest = N.notes.filter(n=>n.sort_order != null).sort((a,b)=> a.sort_order - b.sort_order);
+  const changed = [];
+  [...nulls, ...rest].forEach((n,i)=>{ if(n.sort_order !== i+1){ n.sort_order = i+1; changed.push(n); } });
+  if(changed.length) await saveOrders('notes', changed, 'notes');
+}
+async function reorderNotes(srcId, targetId, after){
+  const src = N.notes.find(n=>n.id===srcId), tgt = N.notes.find(n=>n.id===targetId);
+  if(!src || !tgt || !!src.pinned !== !!tgt.pinned) return;
+  if(N.sort !== 'custom'){ await ensureCustomOrder(); setSort('custom'); }
+  const vis = visible();
+  const ids = vis.map(n=>n.id);
+  ids.splice(ids.indexOf(srcId), 1);
+  let to = ids.indexOf(targetId); if(after) to++;
+  ids.splice(to, 0, srcId);
+  const slots = vis.map(n=>n.sort_order).sort((a,b)=>a-b);   // ใช้ช่องลำดับเดิมของรายการที่เห็น ไม่กระทบโน้ตที่ถูกกรองไว้
+  const changed = [];
+  ids.forEach((id,i)=>{ const n = N.notes.find(x=>x.id===id); if(n.sort_order !== slots[i]){ n.sort_order = slots[i]; changed.push(n); } });
+  renderList();
+  if(changed.length) await saveOrders('notes', changed, 'notes');
+}
+function moveNote(id, dir){
+  const v = visible(), i = v.findIndex(n=>n.id===id), j = dir === 'up' ? i-1 : i+1;
+  if(i < 0 || j < 0 || j >= v.length || !!v[j].pinned !== !!v[i].pinned) return;
+  reorderNotes(id, v[j].id, dir === 'down');
+}
+async function reorderBooks(srcId, targetId, after){
+  const ids = N.books.map(b=>b.id);
+  if(!ids.includes(srcId) || !ids.includes(targetId)) return;
+  ids.splice(ids.indexOf(srcId), 1);
+  let to = ids.indexOf(targetId); if(after) to++;
+  ids.splice(to, 0, srcId);
+  const byId = Object.fromEntries(N.books.map(b=>[b.id,b]));
+  const changed = [];
+  N.books = ids.map((id,i)=>{ const b = byId[id]; if(b.sort_order !== i+1){ b.sort_order = i+1; changed.push(b); } return b; });
+  renderBooks();
+  if(changed.length) await saveOrders('note_notebooks', changed, 'books');
+}
+function moveBook(id, dir){
+  const i = N.books.findIndex(b=>b.id===id), j = dir === 'up' ? i-1 : i+1;
+  if(i < 0 || j < 0 || j >= N.books.length) return;
+  reorderBooks(id, N.books[j].id, dir === 'down');
+}
+
+/* ---------- สีของสมุด ---------- */
+function closeColorPop(){ const p = $id('nb-pop'); if(p) p.remove(); document.removeEventListener('mousedown', outsidePop, true); document.removeEventListener('keydown', escPop, true); }
+function outsidePop(e){ const p = $id('nb-pop'); if(p && !p.contains(e.target)) closeColorPop(); }
+function escPop(e){ if(e.key === 'Escape'){ e.stopPropagation(); closeColorPop(); } }
+async function setBookColor(id, color){
+  const b = N.books.find(x=>x.id===id); if(!b) return;
+  b.color = color;
+  const { error } = await sb.from('note_notebooks').update({ color }).eq('id', id);
+  if(error) showToast('เปลี่ยนสีไม่สำเร็จ: '+error.message);
+}
+function paintBookDot(id, color){
+  document.querySelectorAll(`.nbi[data-id="${id}"] .nb-dot`).forEach(d => { d.style.background = color; });
+}
+function openColorPop(id, anchor){
+  closeColorPop();
+  const b = N.books.find(x=>x.id===id); if(!b) return;
+  const cur = (b.color || '#4A74D0').toLowerCase();
+  const pop = document.createElement('div'); pop.className = 'nb-pop'; pop.id = 'nb-pop';
+  pop.innerHTML = `<div class="nb-pop-t">สีของสมุด “${escapeHtml(b.name)}”</div>
+    <div class="nb-sw">${PALETTE.map(c=>`<button type="button" class="nb-swb ${c.toLowerCase()===cur?'on':''}" data-c="${c}" style="background:${c}" aria-label="${c}"></button>`).join('')}</div>
+    <label class="nb-custom">สีอื่น <input type="color" value="${/^#[0-9a-f]{6}$/i.test(cur)?cur:'#4a74d0'}"></label>`;
+  document.body.appendChild(pop);
+  const r = anchor.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+  pop.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px';
+  pop.style.top = (r.bottom + 6 + h > innerHeight ? Math.max(8, r.top - h - 6) : r.bottom + 6) + 'px';
+  pop.querySelectorAll('.nb-swb').forEach(sw => sw.addEventListener('click', async ()=>{
+    paintBookDot(id, sw.dataset.c); closeColorPop(); await setBookColor(id, sw.dataset.c);
+  }));
+  const inp = pop.querySelector('input[type=color]');
+  inp.addEventListener('input', ()=> paintBookDot(id, inp.value));
+  inp.addEventListener('change', ()=> setBookColor(id, inp.value));
+  setTimeout(()=>{ document.addEventListener('mousedown', outsidePop, true); document.addEventListener('keydown', escPop, true); }, 0);
+}
+
+/* ---------- ขนาดตัวอักษร (ทั้งโน้ต) ---------- */
+const fsKey = id => 'dowork_note_fs_' + id;
+function fsOf(n){
+  if(n.font_size) return n.font_size;
+  try{ const v = parseInt(localStorage.getItem(fsKey(n.id)), 10); if(v) return v; }catch(e){}
+  return 15;
+}
+async function setFontSize(v){
+  const n = current(), docEl = $id('note-doc'); if(!n || !docEl) return;
+  n.font_size = v;
+  try{ localStorage.setItem(fsKey(n.id), String(v)); }catch(e){}
+  docEl.style.fontSize = v + 'px';
+  const sel = $id('note-fs'); if(sel) sel.value = String(v);
+  const { error } = await sb.from('notes').update({ font_size: v }).eq('id', n.id);
+  if(error && !N.warned.fs){ N.warned.fs = true; showToast('ขนาดตัวอักษรจะจำเฉพาะเครื่องนี้ จนกว่าจะรัน note_setup.sql'); }
+}
+function stepFontSize(dir){
+  const n = current(); if(!n) return;
+  const cur = fsOf(n);
+  let i = FS.findIndex(f=>f.v >= cur); if(i < 0) i = FS.length - 1;
+  i = Math.max(0, Math.min(FS.length - 1, i + dir));
+  setFontSize(FS[i].v);
 }
 
 /* ---------- data ---------- */
@@ -130,20 +279,30 @@ async function flushSave(){
 function renderBooks(){
   const el = $id('nb-list'); if(!el) return;
   const count = id => N.notes.filter(n=> id ? n.notebook_id===id : true).length;
-  el.innerHTML = `<div class="nbi ${N.selBook===''?'on':''}" data-id=""><i style="background:#4A74D0"></i><span class="nbn">ทั้งหมด</span><b>${count('')}</b></div>` +
-    N.books.map(b=>`<div class="nbi ${N.selBook===b.id?'on':''}" data-id="${b.id}">
-      <i style="background:${escapeHtml(b.color||'#4A74D0')}"></i><span class="nbn">${escapeHtml(b.name)}</span>
-      <span class="nb-tools"><button type="button" data-act="rename" title="เปลี่ยนชื่อ">✎</button><button type="button" data-act="del" title="ลบสมุด">✕</button></span>
+  el.innerHTML = `<div class="nbi ${N.selBook===''?'on':''}" data-id=""><i class="nb-dot" style="background:#4A74D0"></i><span class="nbn">ทั้งหมด</span><b>${count('')}</b></div>` +
+    N.books.map(b=>`<div class="nbi" data-id="${b.id}" draggable="true">
+      <button type="button" class="nb-dot" data-act="color" title="เปลี่ยนสี" aria-label="เปลี่ยนสี" style="background:${escapeHtml(b.color||'#4A74D0')}"></button>
+      <span class="nbn">${escapeHtml(b.name)}</span>
+      <span class="nb-tools"><button type="button" class="mv" data-act="up" title="เลื่อนขึ้น">▲</button><button type="button" class="mv" data-act="down" title="เลื่อนลง">▼</button><button type="button" data-act="rename" title="เปลี่ยนชื่อ">✎</button><button type="button" data-act="del" title="ลบสมุด">✕</button></span>
       <b>${count(b.id)}</b></div>`).join('');
-  el.querySelectorAll('.nbi').forEach(row=> row.addEventListener('click', async (e)=>{
-    const id = row.dataset.id;
-    const act = e.target.closest('[data-act]');
-    if(act){ e.stopPropagation(); return act.dataset.act==='rename' ? renameBook(id) : deleteBook(id); }
-    await flushSave();
-    N.selBook = id;
-    const v = visible(); if(!v.find(n=>n.id===N.selId)) N.selId = v.length ? v[0].id : null;
-    renderBooks(); renderList(); renderEditor();
-  }));
+  el.querySelectorAll('.nbi').forEach(row=> {
+    if(row.dataset.id === N.selBook) row.classList.add('on');
+    row.addEventListener('click', async (e)=>{
+      const id = row.dataset.id;
+      const act = e.target.closest('[data-act]');
+      if(act){
+        e.stopPropagation();
+        if(act.dataset.act === 'color') return openColorPop(id, act);
+        if(act.dataset.act === 'up' || act.dataset.act === 'down') return moveBook(id, act.dataset.act);
+        return act.dataset.act === 'rename' ? renameBook(id) : deleteBook(id);
+      }
+      await flushSave();
+      N.selBook = id;
+      const v = visible(); if(!v.find(n=>n.id===N.selId)) N.selId = v.length ? v[0].id : null;
+      renderBooks(); renderList(); renderEditor();
+    });
+  });
+  wireDnD(el, '.nbi[draggable="true"]', { canDrop:(s,t)=> s !== '' && t !== '', onDrop:reorderBooks });
 }
 async function addBook(){
   const name = ((await uiPrompt('สมุดโน้ตใหม่', '', { placeholder:'ชื่อสมุด เช่น งานประจำ', confirmText:'สร้างสมุด' })) || '').trim();
@@ -175,6 +334,16 @@ async function deleteBook(id){
 }
 
 /* ---------- รายการโน้ต ---------- */
+function renderSortBar(){
+  const el = $id('note-sort'); if(!el) return;
+  el.innerHTML = `<button type="button" data-s="recent" class="${N.sort==='recent'?'on':''}">ล่าสุดก่อน</button><button type="button" data-s="custom" class="${N.sort==='custom'?'on':''}" title="ลากสลับตำแหน่งเองได้">กำหนดเอง</button>`;
+  el.querySelectorAll('button').forEach(b=> b.addEventListener('click', async ()=>{
+    if(b.dataset.s === N.sort) return;
+    if(b.dataset.s === 'custom') await ensureCustomOrder();
+    setSort(b.dataset.s);
+  }));
+}
+const sameGroup = (a, b) => { const x = N.notes.find(n=>n.id===a), y = N.notes.find(n=>n.id===b); return !!x && !!y && !!x.pinned === !!y.pinned; };
 function renderList(){
   const el = $id('note-list'); if(!el) return;
   const v = visible();
@@ -182,16 +351,23 @@ function renderList(){
     el.innerHTML = `<div class="empty-note" style="margin:10px;">${N.q ? 'ไม่พบโน้ตที่ค้นหา' : 'ยังไม่มีโน้ต กด “+ โน้ตใหม่” ได้เลย'}</div>`;
     return;
   }
-  let last = '', html = '';
+  const custom = N.sort === 'custom', hasPinned = v.some(n=>n.pinned);
+  let last = null, html = '';
   v.forEach(n=>{
-    const g = groupOf(n);
-    if(g !== last){ html += `<div class="lab">${g}</div>`; last = g; }
-    html += `<div class="ni ${n.id===N.selId?'on':''}" data-id="${n.id}">
+    const g = custom ? (hasPinned ? (n.pinned ? '📌 ปักหมุด' : 'อื่นๆ') : '') : groupOf(n);
+    if(g !== last){ if(g) html += `<div class="lab">${g}</div>`; last = g; }
+    html += `<div class="ni ${n.id===N.selId?'on':''}" data-id="${n.id}" draggable="true">
       <div class="nt">${escapeHtml(n.title || 'ไม่มีชื่อ')}</div>
-      <div class="nd"><span>${fmtShort(n.updated_at)}</span><span class="snip">${escapeHtml(n._text.slice(0,70) || 'ไม่มีข้อความเพิ่มเติม')}</span></div></div>`;
+      <div class="nd"><span>${fmtShort(n.updated_at)}</span><span class="snip">${escapeHtml(n._text.slice(0,70) || 'ไม่มีข้อความเพิ่มเติม')}</span></div>
+      ${custom ? '<span class="ni-mv"><button type="button" data-mv="up" title="เลื่อนขึ้น">▲</button><button type="button" data-mv="down" title="เลื่อนลง">▼</button></span>' : ''}</div>`;
   });
   el.innerHTML = html;
-  el.querySelectorAll('.ni').forEach(it=> it.addEventListener('click', ()=> selectNote(it.dataset.id)));
+  el.querySelectorAll('.ni').forEach(it=> it.addEventListener('click', e=>{
+    const mv = e.target.closest('[data-mv]');
+    if(mv){ e.stopPropagation(); return moveNote(it.dataset.id, mv.dataset.mv); }
+    selectNote(it.dataset.id);
+  }));
+  wireDnD(el, '.ni', { canDrop: sameGroup, onDrop: reorderNotes });
 }
 async function selectNote(id){
   await flushSave();
@@ -201,7 +377,9 @@ async function selectNote(id){
 }
 async function newNote(){
   await flushSave();
-  const { data, error } = await sb.from('notes').insert({ user_id: currentUser.id, notebook_id: N.selBook || null, title:'', content:'' }).select().single();
+  const row = { user_id: currentUser.id, notebook_id: N.selBook || null, title:'', content:'' };
+  if(N.sort === 'custom') row.sort_order = Math.min(0, ...N.notes.map(n=>n.sort_order == null ? 0 : n.sort_order)) - 1;   // ขึ้นบนสุด
+  const { data, error } = await sb.from('notes').insert(row).select().single();
   if(error){ showToast('สร้างโน้ตไม่สำเร็จ: '+error.message+' (ต้องรัน note_setup.sql ก่อน)'); return; }
   const n = prep(data); N.notes.unshift(n); N.selId = n.id; N.q = '';
   const s = $id('note-search'); if(s) s.value = '';
@@ -270,6 +448,8 @@ async function exec(cmd){
     if(saved){ sel.removeAllRanges(); sel.addRange(saved); }
     document.execCommand('createLink', false, normalizeUrl(url));
   }
+  else if(cmd === 'fsup') return stepFontSize(1);
+  else if(cmd === 'fsdown') return stepFontSize(-1);
   else if(cmd === 'pin') return togglePinNote();
   else if(cmd === 'del') return deleteNote();
   scheduleSave(); toolbarState();
@@ -299,6 +479,10 @@ function renderEditor(){
       <button type="button" class="tbb" data-cmd="check" title="เช็คลิสต์">☑ เช็ค</button>
       <button type="button" class="tbb" data-cmd="link" title="ลิงก์">🔗</button>
       <span class="sep"></span>
+      <button type="button" class="tbb" data-cmd="fsdown" title="ตัวอักษรเล็กลง">A−</button>
+      <select class="tbs" id="note-fs" aria-label="ขนาดตัวอักษร">${FS.map(f=>`<option value="${f.v}" ${f.v===fsOf(n)?'selected':''}>${f.l}</option>`).join('')}${FS.some(f=>f.v===fsOf(n)) ? '' : `<option value="${fsOf(n)}" selected>${fsOf(n)}px</option>`}</select>
+      <button type="button" class="tbb" data-cmd="fsup" title="ตัวอักษรใหญ่ขึ้น">A+</button>
+      <span class="sep"></span>
       <button type="button" class="tbb ${n.pinned?'on':''}" data-cmd="pin" title="ปักหมุด">📌</button>
       <button type="button" class="tbb" data-cmd="del" title="ลบโน้ต">🗑</button>
       <span class="note-saved" id="note-saved">${dirty ? 'กำลังบันทึก…' : '✓ บันทึกแล้ว'}</span>
@@ -313,6 +497,8 @@ function renderEditor(){
     </div>`;
   const docEl = $id('note-doc');
   docEl.innerHTML = n.content;
+  docEl.style.fontSize = fsOf(n) + 'px';
+  $id('note-fs').addEventListener('change', e => setFontSize(parseInt(e.target.value, 10)));
   // toolbar
   ed.querySelectorAll('.tbb').forEach(b=>{
     b.addEventListener('mousedown', e=> e.preventDefault());
@@ -372,6 +558,7 @@ function build(){
       <section class="pane note-list">
         <div class="note-list-head">
           <input type="text" class="note-search" id="note-search" placeholder="ค้นหาโน้ต...">
+          <div class="note-sort" id="note-sort"></div>
           <button type="button" class="btn-add wide" id="note-new">+ โน้ตใหม่</button>
         </div>
         <div class="note-list-scroll" id="note-list"></div>
@@ -379,6 +566,7 @@ function build(){
       <section class="pane note-ed" id="note-ed"></section>
     </div>`;
   $id('nb-add').addEventListener('click', addBook);
+  renderSortBar();
   $id('note-new').addEventListener('click', newNote);
   $id('note-search').addEventListener('input', e=>{ N.q = e.target.value; renderList(); });
   built = true;
