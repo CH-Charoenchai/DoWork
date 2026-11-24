@@ -3,6 +3,7 @@
    ข้อมูลในกราฟ/ตัวชี้วัด/การ์ดเสร็จ/Export ใช้ตัวกรองด้านบน (ปี + เดือนนี้/ไตรมาสนี้/ทั้งหมด) */
 
 let homeYear = new Date().getFullYear();
+homeRange = 'all';   // ค่าเริ่มต้นของตัวกรองช่วงเวลา: ทั้งหมด (ตัวแปรประกาศไว้ใน index.html)
 let homeOverviewChart = null;
 const OV_COLOR = { carry:'#F2994A', added:'#FFC53D', done:'#5FB46A' };
 
