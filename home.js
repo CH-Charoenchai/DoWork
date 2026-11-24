@@ -4,7 +4,7 @@
 
 let homeYear = new Date().getFullYear();
 let homeOverviewChart = null;
-const OV_COLOR = { carry:'#FFC53D', added:'#4A74D0', done:'#5FB46A' };
+const OV_COLOR = { carry:'#F2994A', added:'#FFC53D', done:'#5FB46A' };
 
 (function injectHomeCss(){
   const st = document.createElement('style');
@@ -22,6 +22,8 @@ const OV_COLOR = { carry:'#FFC53D', added:'#4A74D0', done:'#5FB46A' };
   select:disabled{opacity:.55;cursor:not-allowed;}
   select option{background:#fff;color:var(--ink);font-weight:600;}
   .year-select{padding:7px 14px;border-radius:999px;border:1.5px solid var(--navy);background:#fff;font-weight:700;font-size:13px;color:var(--navy-deep);outline:none;}
+  .stat-card.accent-hold{background:#EAEFF7;}
+  .stat-card.accent-hold .stat-num{color:#44537A;}
   .soon-panel{margin-bottom:16px;}
   .soon-row{display:flex;align-items:center;gap:14px;padding:11px 4px;cursor:pointer;}
   .soon-row+.soon-row{border-top:1px solid var(--border);}
@@ -125,7 +127,7 @@ const overviewPlugin = {
         if(v > 0 && h >= 16){ ctx.fillStyle = k === 1 ? '#2B3F6B' : '#fff'; ctx.fillText(v, el.x, el.y + h/2); }
       });
       // ยอดรวมแท่งค้าง
-      const total = ds[0].data[i] + ds[1].data[i];  // 0 = เพิ่มเดือนนี้ (ล่าง), 1 = ยกมา (บน)
+      const total = ds[0].data[i] + ds[1].data[i];  // 0 = ยกมา (ล่าง, ส้ม), 1 = เพิ่มเดือนนี้ (บน, เหลือง)
       if(total > 0){
         const top = Math.min(...[0,1].filter(k => ds[k].data[i] > 0).map(k => m[k].data[i].y));
         ctx.fillStyle = '#26365E'; ctx.fillText(total, m[1].data[i].x, top - 10);
@@ -151,8 +153,8 @@ function renderOverviewChart(per){
     data: {
       labels: d.labels,
       datasets: [
-        { ...bar, label:'เพิ่มเดือนนี้', data:d.added, backgroundColor:OV_COLOR.added, stack:'open' },
-        { ...bar, label:'ยกมาจากเดือนก่อน', data:d.carry, backgroundColor:OV_COLOR.carry, stack:'open', borderRadius:rad },
+        { ...bar, label:'ยกมาจากเดือนก่อน', data:d.carry, backgroundColor:OV_COLOR.carry, stack:'open' },
+        { ...bar, label:'เพิ่มเดือนนี้', data:d.added, backgroundColor:OV_COLOR.added, stack:'open', borderRadius:rad },
         { ...bar, label:'เสร็จ', data:d.done, backgroundColor:OV_COLOR.done, stack:'done', borderRadius:rad }
       ]
     },
@@ -314,6 +316,10 @@ function renderHome(){
       <div class="stat-card ${lateN?'accent-coral':''}">
         <div class="stat-num">${soon.length}</div><div class="stat-label">ใกล้ครบกำหนด / เลยกำหนด</div>
         <div class="stat-sub">${lateN ? 'เลยกำหนด '+lateN+' งาน' : 'ไม่มีงานเลยกำหนด'}</div>
+      </div>
+      <div class="stat-card accent-hold">
+        <div class="stat-num">${held}</div><div class="stat-label">งานที่พักไว้</div>
+        <div class="stat-sub">ไม่นับเป็นงานค้าง</div>
       </div>
       <div class="stat-card accent-mint">
         <div class="stat-num">${doneN}</div><div class="stat-label">เสร็จ (ช่วงที่เลือก)</div>
