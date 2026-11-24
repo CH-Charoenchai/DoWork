@@ -219,26 +219,8 @@ function openForm(id){
   };
 }
 
-/* ---------- home integration ---------- */
-function decorateHome(){
-  const g=$('.stat-grid'); if(!g) return;
-  const act=R.items.filter(r=>r.active), d=act.filter(r=>isDone(r)).length, p=act.length?Math.round(d/act.length*100):0;
-  const c=document.createElement('div'); c.className='stat-card accent-mint'; c.style.cursor='pointer';
-  c.innerHTML=act.length
-    ?`<div class="stat-num">${d}/${act.length}</div><div class="stat-label">ลูทีนรอบนี้</div><div class="bar-track" style="margin-top:8px;"><div class="bar-fill" style="width:${p}%;background:var(--mint);"></div></div>`
-    :`<div class="stat-num">–</div><div class="stat-label">ลูทีน</div><div class="stat-sub">ยังไม่มีลูทีน</div>`;
-  c.onclick=()=>switchView('routine'); g.appendChild(c);
-  const panel=[...$$('.panel')].find(x=>x.querySelector('h3')&&x.querySelector('h3').textContent.trim()==='ใกล้ครบกำหนด');
-  const items=act.filter(r=>!isDone(r)).map(r=>({r,s:st(r)})).filter(x=>x.s.state!=='todo').sort((a,b)=>a.s.due-b.s.due);
-  if(!panel||!items.length) return;
-  let list=panel.querySelector('.mini-list');
-  if(!list){ const en=panel.querySelector('.empty-note'); if(en) en.remove(); list=document.createElement('div'); list.className='mini-list'; panel.appendChild(list); }
-  items.forEach(({r,s})=>{
-    const it=document.createElement('div'); it.className='mini-item';
-    it.innerHTML=`<span class="mood-dot" style="width:12px;height:12px;background:var(--mint);"></span><span class="mtitle">${escapeHtml(r.title)}</span><span class="tag tag-cat" style="font-size:10px;">🔁 ลูทีน</span><span class="mmeta ${s.state==='overdue'?'overdue':''}">${fmtDate(s.due)}</span>`;
-    it.onclick=()=>switchView('routine'); list.appendChild(it);
-  });
-}
+/* ---------- ให้ home.js เรียกใช้ (การ์ดลูทีนและแถวลูทีนในหน้า Home) ---------- */
+window.DWRoutine={active:()=>R.items.filter(r=>r.active),isDone:r=>isDone(r),st,toggle:id=>act('toggle',id),go:()=>switchView('routine')};
 
 /* ---------- boot ---------- */
 const css=document.createElement('style');
@@ -248,11 +230,7 @@ css.textContent=`
 .rt-dots{display:flex;gap:4px;margin-top:6px;}
 .rt-dot{width:8px;height:8px;border-radius:50%;background:var(--border);}
 .rt-dot.on{background:var(--mint);}
-.rt-add{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
-.rt-add input,.rt-add select,.rt-day{padding:10px 12px;border-radius:var(--radius-sm);border:1.5px solid var(--border);background:var(--surface);font-size:13.5px;color:var(--ink);outline:none;}
-.rt-day{padding:4px 6px;font-size:12px;}
-.rt-add input{flex:1;min-width:180px;}
-.rt-add button{background:var(--purple);color:#fff;padding:10px 18px;border-radius:var(--radius-sm);font-weight:700;font-size:13px;}
+.rt-day{padding:4px 6px;border-radius:var(--radius-sm);border:1.5px solid var(--border);background:var(--surface);font-size:12px;color:var(--ink);outline:none;}
 .task-card.rt-soon{background:linear-gradient(135deg,var(--yellow-soft),var(--surface) 60%);border:1.5px solid var(--yellow);}
 .task-card.rt-overdue{background:linear-gradient(135deg,var(--coral-soft),var(--surface) 60%);border:1.5px solid var(--coral);}
 .rt-soon .deadline-badge{color:#a66a00;font-weight:700;}
@@ -270,7 +248,7 @@ document.head.appendChild(css);
 // nav + view
 const sideBtn=document.createElement('button');
 sideBtn.className='nav-item'; sideBtn.dataset.view='routine';
-sideBtn.innerHTML='<span class="nav-icon">🔁</span>Routine<span id="routine-badge" class="hidden" style="margin-left:auto;background:var(--coral-soft);color:var(--coral);font-size:11px;font-family:var(--font-mono);padding:2px 8px;border-radius:999px;"></span>';
+sideBtn.innerHTML='Routine<span id="routine-badge" class="hidden" style="margin-left:auto;background:var(--coral-soft);color:var(--coral);font-size:11px;font-family:var(--font-mono);padding:2px 8px;border-radius:999px;"></span>';
 $('.nav-item[data-view="work"]').after(sideBtn);
 const mobBtn=document.createElement('button'); mobBtn.dataset.view='routine'; mobBtn.textContent='Routine';
 $('.mobile-nav button[data-view="work"]').after(mobBtn);
@@ -278,7 +256,7 @@ const view=document.createElement('div'); view.id='routine-view'; view.className
 $('#work-view').after(view);
 [sideBtn,mobBtn].forEach(b=>b.addEventListener('click',()=>switchView('routine')));
 
-// hook switchView / renderHome
+// hook switchView
 const _sv=switchView;
 switchView=function(v){
   if(v!=='routine'){ view.classList.add('hidden'); return _sv(v); }
@@ -289,8 +267,6 @@ switchView=function(v){
   $('#fab-add').classList.remove('hidden');
   render();
 };
-const _rh=renderHome;
-renderHome=function(){ _rh(); decorateHome(); };
 
 document.addEventListener('click',e=>{
   if(currentView==='routine'&&e.target.closest('#fab-add')){ e.stopPropagation(); openForm(null); }
@@ -302,9 +278,4 @@ sb.auth.onAuthStateChange((ev,session)=>{
   if(session&&session.user){ if(session.user.id!==lastUid||ev==='SIGNED_IN'){ lastUid=session.user.id; load(); } }
   else { lastUid=null; R.items=[]; R.logs=[]; badge(); }
 });
-
-// rename DoDee -> DoWork
-document.title=document.title.replace(/DoDee/g,'DoWork');
-const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT); let n;
-while((n=w.nextNode())) if(n.nodeValue.includes('DoDee')) n.nodeValue=n.nodeValue.replace(/DoDee/g,'DoWork');
 })();
