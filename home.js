@@ -1,12 +1,15 @@
 /* DoWork — home.js
-   แทนที่ renderHome() เดิม: กล่องใกล้ครบกำหนด (ซ่อนถ้าไม่มี) + กราฟภาพรวมรายเดือน + แผงตัวชี้วัด
-   วิธีติดตั้ง: วางไฟล์นี้ข้าง index.html แล้วเพิ่ม <script src="home.js"></script> เป็นตัวสุดท้าย (หลัง tour.js) */
+   แทนที่ renderHome() เดิม · วางไว้ข้าง index.html แล้วเพิ่ม <script src="home.js"></script> เป็นตัวสุดท้าย (หลัง tour.js)
+   ข้อมูลในกราฟ/ตัวชี้วัด/การ์ดเสร็จ/Export ใช้ตัวกรองด้านบน (ปี + เดือนนี้/ไตรมาสนี้/ทั้งหมด) */
 
-let homeTrendMonths = 6;      // 3 | 6 | 12
+let homeYear = new Date().getFullYear();
 let homeOverviewChart = null;
+const OV_COLOR = { carry:'#F2994A', added:'#4A74D0', done:'#5FB46A' };
 
 (function injectHomeCss(){
-  const css = `
+  const st = document.createElement('style');
+  st.textContent = `
+  .year-select{padding:7px 14px;border-radius:999px;border:1.5px solid var(--navy);background:#fff;font-weight:700;font-size:13px;color:var(--navy-deep);outline:none;}
   .soon-panel{margin-bottom:16px;}
   .soon-row{display:flex;align-items:center;gap:14px;padding:11px 4px;cursor:pointer;}
   .soon-row+.soon-row{border-top:1px solid var(--border);}
@@ -16,15 +19,11 @@ let homeOverviewChart = null;
   .soon-when{flex-shrink:0;width:74px;text-align:right;font-size:12.5px;color:var(--ink-soft);}
   .soon-when.hot{color:var(--danger);font-weight:800;}
   .ov-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;margin-bottom:16px;}
-  .ov-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;}
-  .ov-head h3{margin:0;}
-  .ov-toggle{display:flex;gap:6px;}
-  .ov-toggle button{padding:4px 12px;border-radius:999px;border:1.5px solid var(--navy);background:#fff;font-size:12px;font-weight:700;color:var(--navy-deep);}
-  .ov-toggle button.on{background:var(--purple);border-color:var(--purple);color:#fff;}
+  .ov-panel h3{margin:0;}
   .ov-legend{display:flex;gap:14px;flex-wrap:wrap;margin:8px 0 6px;font-size:11.5px;font-weight:700;color:var(--ink);}
   .ov-legend span{display:inline-flex;align-items:center;gap:6px;}
   .ov-legend i{display:inline-block;width:11px;height:11px;border-radius:3px;}
-  .ov-legend i.line{width:12px;height:12px;border-radius:50%;background:#fff;border:2.5px solid #D9731B;}
+  .ov-legend .hint{color:var(--ink-soft);font-weight:600;}
   .ov-chart{position:relative;height:340px;}
   .kpi{padding:14px 0;}
   .kpi+.kpi{border-top:1px solid var(--border);}
@@ -38,68 +37,61 @@ let homeOverviewChart = null;
   .kpi-link{display:inline-block;margin-top:8px;background:none;color:var(--purple);font-weight:700;font-size:12.5px;text-decoration:underline;padding:0;}
   @media (max-width:860px){ .ov-grid{grid-template-columns:1fr;} .ov-chart{height:280px;} }
   `;
-  const st = document.createElement('style');
-  st.textContent = css;
   document.head.appendChild(st);
 })();
 
-// ---------- คำนวณ ----------
-function ovMonthBuckets(n){
-  const now = new Date();
-  const out = [];
-  for(let i = n-1; i >= 0; i--){
-    const s = new Date(now.getFullYear(), now.getMonth()-i, 1);
-    const e = i === 0 ? new Date(now) : new Date(now.getFullYear(), now.getMonth()-i+1, 1);
-    out.push({ s, e, cur: i === 0,
-      label: s.toLocaleDateString('th-TH',{month:'short'}) + (i === 0 ? ' (ตอนนี้)' : '') });
-  }
-  return out;
-}
-function ovDoneDate(t){ return new Date(t.completed_at || t.created_at); }
+// ---------- ช่วงเวลาตามตัวกรอง (ปี + เดือนนี้/ไตรมาสนี้/ทั้งหมด) ----------
+const ovIsDone = t => t.status === 'เสร็จแล้ว';
+const ovDoneDate = t => new Date(t.completed_at || t.created_at);
+const ovDoneIn = (list, s, e) => list.filter(t => ovIsDone(t) && ovDoneDate(t) >= s && ovDoneDate(t) < e).length;
 
-function computeOverview(n){
-  const tasks = tasksCache.filter(t=>t.status !== HOLD);
-  const b = ovMonthBuckets(n);
+function homePeriod(){
+  const m = new Date().getMonth(), Y = homeYear;
+  if(homeRange === 'month') return { s:new Date(Y, m, 1), e:new Date(Y, m+1, 1) };
+  if(homeRange === 'quarter'){ const q = Math.floor(m/3)*3; return { s:new Date(Y, q, 1), e:new Date(Y, q+3, 1) }; }
+  return { s:new Date(Y, 0, 1), e:new Date(Y+1, 0, 1) };
+}
+
+function computeOverview(per){
+  const tasks = tasksCache.filter(t => t.status !== HOLD), now = new Date(), b = [];
+  for(let d = new Date(per.s); d < per.e && d <= now; d = new Date(d.getFullYear(), d.getMonth()+1, 1)){
+    b.push({ s:d, e:new Date(d.getFullYear(), d.getMonth()+1, 1) });
+  }
+  const cur = b.findIndex(x => now >= x.s && now < x.e);
   return {
-    labels: b.map(x=>x.label),
-    cur: b.length - 1,
-    created: b.map(x=> tasks.filter(t=>{ const c = new Date(t.created_at); return c >= x.s && c < x.e; }).length),
-    done: b.map(x=> tasks.filter(t=> t.status === 'เสร็จแล้ว' && ovDoneDate(t) >= x.s && ovDoneDate(t) < x.e).length),
-    // ยกไปเดือนถัดไป = งานที่สร้างแล้วและยังไม่เสร็จ ณ สิ้นเดือนนั้น (เดือนนี้ = ค้างตอนนี้)
-    carry: b.map(x=> tasks.filter(t=> new Date(t.created_at) < x.e && !(t.status === 'เสร็จแล้ว' && ovDoneDate(t) < x.e)).length)
+    cur,
+    labels: b.map((x,i) => [x.s.toLocaleDateString('th-TH',{month:'short'}) + (i === cur ? ' (ตอนนี้)' : ''), String(x.s.getFullYear())]),
+    // ยกมา = ค้างอยู่ ณ ต้นเดือน · เพิ่ม = สร้างในเดือน · เสร็จ = เสร็จในเดือน
+    carry: b.map(x => tasks.filter(t => new Date(t.created_at) < x.s && !(ovIsDone(t) && ovDoneDate(t) < x.s)).length),
+    added: b.map(x => tasks.filter(t => { const c = new Date(t.created_at); return c >= x.s && c < x.e; }).length),
+    done:  b.map(x => ovDoneIn(tasks, x.s, x.e))
   };
 }
 
-function computeKpis(){
-  const now = new Date();
-  const from = new Date(now.getFullYear(), now.getMonth()-5, 1);
-  const done6 = tasksCache.filter(t=> t.status === 'เสร็จแล้ว' && t.completed_at && new Date(t.completed_at) >= from);
-  const withDl = done6.filter(t=> t.deadline_at_completion || t.deadline);
-  let onTime = 0;
-  withDl.forEach(t=>{
-    const c = new Date(t.completed_at); c.setHours(0,0,0,0);
-    const d = new Date(t.deadline_at_completion || t.deadline); d.setHours(0,0,0,0);
-    if(c <= d) onTime++;
-  });
-  const days = done6.map(t=> (new Date(t.completed_at) - new Date(t.created_at)) / 864e5).filter(x=>x >= 0);
-  const avg = days.length ? days.reduce((a,b)=>a+b,0) / days.length : null;
-  const stale = tasksCache
-    .filter(t=> t.status !== 'เสร็จแล้ว' && t.status !== HOLD && (now - new Date(t.created_at)) / 864e5 > 30)
-    .sort((a,b)=> new Date(a.created_at) - new Date(b.created_at));
+function computeKpis(per){
+  const tasks = tasksCache.filter(t => t.status !== HOLD), now = new Date();
+  const asOf = per.e < now ? per.e : now;
+  const total = tasks.filter(t => new Date(t.created_at) < per.e && !(ovIsDone(t) && ovDoneDate(t) < per.s)).length;
+  const doneList = tasks.filter(t => ovIsDone(t) && ovDoneDate(t) >= per.s && ovDoneDate(t) < per.e);
+  const days = doneList.filter(t => t.completed_at).map(t => (new Date(t.completed_at) - new Date(t.created_at)) / 864e5).filter(x => x >= 0);
+  const stale = tasks
+    .filter(t => (asOf - new Date(t.created_at)) / 864e5 > 30 && !(ovIsDone(t) && ovDoneDate(t) <= asOf))
+    .sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
   return {
-    onTime, total: withDl.length, rate: withDl.length ? Math.round(onTime / withDl.length * 100) : null,
-    avg, stale
+    total, done: doneList.length, pct: total ? Math.round(doneList.length / total * 100) : null,
+    avg: days.length ? days.reduce((a,b) => a+b, 0) / days.length : null,
+    stale, asOf
   };
 }
 
 // ---------- กราฟ ----------
 const overviewPlugin = {
   id: 'overviewDecor',
-  beforeDraw(chart){
+  beforeDraw(chart, args, opt){
+    if(opt.cur < 0) return;
     const { ctx, chartArea, scales } = chart;
-    const n = chart.data.labels.length;
-    const w = chartArea.width / n;
-    const x = scales.x.getPixelForValue(n - 1);
+    const w = chartArea.width / chart.data.labels.length;
+    const x = scales.x.getPixelForValue(opt.cur);
     ctx.save();
     ctx.fillStyle = '#FFF1CC';
     ctx.beginPath();
@@ -109,55 +101,56 @@ const overviewPlugin = {
     ctx.restore();
   },
   afterDatasetsDraw(chart){
-    const { ctx, chartArea } = chart;
+    const { ctx } = chart, ds = chart.data.datasets;
+    const m = [0,1,2].map(i => chart.getDatasetMeta(i));
     ctx.save();
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = "700 12px 'Plus Jakarta Sans','Noto Sans Thai',sans-serif";
-    chart.data.datasets.forEach((ds, di)=>{
-      const meta = chart.getDatasetMeta(di);
-      meta.data.forEach((el, i)=>{
-        const v = ds.data[i];
-        if(ds.type === 'line'){
-          const cy = el.y - 17;
-          ctx.beginPath(); ctx.arc(el.x, cy, 10, 0, Math.PI*2);
-          ctx.fillStyle = '#fff'; ctx.fill();
-          ctx.lineWidth = 2; ctx.strokeStyle = '#D9731B'; ctx.stroke();
-          ctx.fillStyle = '#B35A10'; ctx.fillText(v, el.x, cy + 0.5);
-        } else {
-          const h = chartArea.bottom - el.y;
-          if(h >= 18){ ctx.fillStyle = di === 0 ? '#fff' : '#1F3A24'; ctx.fillText(v, el.x, el.y + 10); }
-          else { ctx.fillStyle = '#26365E'; ctx.fillText(v, el.x, el.y - 9); }
-        }
+    chart.data.labels.forEach((_, i) => {
+      // ตัวเลขในแต่ละช่วงสีของแท่งค้าง
+      [0,1].forEach(k => {
+        const v = ds[k].data[i], el = m[k].data[i], h = el.base - el.y;
+        if(v > 0 && h >= 16){ ctx.fillStyle = '#fff'; ctx.fillText(v, el.x, el.y + h/2); }
       });
+      // ยอดรวมแท่งค้าง
+      const total = ds[0].data[i] + ds[1].data[i];
+      if(total > 0){
+        const top = Math.min(...[0,1].filter(k => ds[k].data[i] > 0).map(k => m[k].data[i].y));
+        ctx.fillStyle = '#26365E'; ctx.fillText(total, m[1].data[i].x, top - 10);
+      }
+      // ตัวเลขแท่งเสร็จ
+      const dv = ds[2].data[i];
+      if(dv > 0){ ctx.fillStyle = '#26365E'; ctx.fillText(dv, m[2].data[i].x, m[2].data[i].y - 10); }
     });
     ctx.restore();
   }
 };
 
-function renderOverviewChart(){
+function renderOverviewChart(per){
   const canvas = document.getElementById('overview-chart');
   if(!canvas || typeof Chart === 'undefined') return;
-  const d = computeOverview(homeTrendMonths);
+  const d = computeOverview(per);
   if(homeOverviewChart){ homeOverviewChart.destroy(); homeOverviewChart = null; }
-  const top = Math.max(...d.created, ...d.done, ...d.carry, 1);
+  const top = Math.max(...d.carry.map((c,i) => c + d.added[i]), ...d.done, 1);
+  const bar = { categoryPercentage:.8, barPercentage:.92, maxBarThickness:56 };
+  const rad = { topLeft:5, topRight:5 };
   homeOverviewChart = new Chart(canvas, {
+    type: 'bar',
     data: {
       labels: d.labels,
       datasets: [
-        { type:'bar', label:'งานใหม่', data:d.created, backgroundColor:'#4A74D0', borderRadius:5, categoryPercentage:.78, barPercentage:.95, order:2 },
-        { type:'bar', label:'เสร็จ', data:d.done, backgroundColor:'#5FB46A', borderRadius:5, categoryPercentage:.78, barPercentage:.95, order:2 },
-        { type:'line', label:'ยกไปเดือนถัดไป', data:d.carry, borderColor:'#D9731B', backgroundColor:'#fff', borderWidth:3,
-          pointRadius:5, pointBackgroundColor:'#fff', pointBorderColor:'#D9731B', pointBorderWidth:3, tension:0, order:1 }
+        { ...bar, label:'ยกมาจากเดือนก่อน', data:d.carry, backgroundColor:OV_COLOR.carry, stack:'open' },
+        { ...bar, label:'เพิ่มเดือนนี้', data:d.added, backgroundColor:OV_COLOR.added, stack:'open', borderRadius:rad },
+        { ...bar, label:'เสร็จ', data:d.done, backgroundColor:OV_COLOR.done, stack:'done', borderRadius:rad }
       ]
     },
     options: {
       responsive:true, maintainAspectRatio:false,
       layout:{ padding:{ top:30 } },
-      plugins:{ legend:{ display:false } },
+      plugins:{ legend:{ display:false }, overviewDecor:{ cur:d.cur } },
       scales:{
-        y:{ beginAtZero:true, suggestedMax: top + 2, ticks:{ precision:0, color:'#5F6F94' }, grid:{ color:'#E6ECF7' }, border:{ display:false } },
-        x:{ ticks:{ color:'#26365E', font:{ weight:'700', size:12 } }, grid:{ display:false } }
+        y:{ stacked:true, beginAtZero:true, suggestedMax:top + 2, ticks:{ precision:0, color:'#5F6F94' }, grid:{ color:'#E6ECF7' }, border:{ display:false } },
+        x:{ stacked:true, ticks:{ color:'#26365E', font:{ weight:'700', size:12 } }, grid:{ display:false } }
       }
     },
     plugins:[overviewPlugin]
@@ -165,7 +158,7 @@ function renderOverviewChart(){
 }
 
 // ---------- รายการงานค้างเกิน 30 วัน ----------
-function showStaleTasks(list){
+function showStaleTasks(list, asOf){
   const ov = document.createElement('div');
   ov.className = 'modal-overlay';
   ov.innerHTML = `
@@ -176,7 +169,7 @@ function showStaleTasks(list){
           <div class="mini-item" data-id="${t.id}">
             <span class="mtitle">${escapeHtml(t.title)}</span>
             <span class="tag tag-cat" style="background:${colorForCategory(t.category)}22;color:${colorForCategory(t.category)};">${escapeHtml(t.category)}</span>
-            <span class="mmeta">ค้าง ${Math.floor((Date.now() - new Date(t.created_at)) / 864e5)} วัน</span>
+            <span class="mmeta">ค้าง ${Math.floor((asOf - new Date(t.created_at)) / 864e5)} วัน</span>
           </div>`).join('')}</div>
       </div>
     </div>`;
@@ -190,45 +183,102 @@ function showStaleTasks(list){
   }));
 }
 
+// ---------- Export CSV (ตามตัวกรอง) ----------
+function exportSummaryCSV(){
+  const per = homePeriod();
+  const list = tasksCache.filter(t=>{
+    const ref = ovIsDone(t) ? ovDoneDate(t) : new Date(t.created_at);
+    return ref >= per.s && ref < per.e;
+  });
+  const rows = [['ชื่องาน','หมวดหมู่','สถานะ','urgency','Impact','Deadline','วันที่เสร็จ','วันที่สร้าง']];
+  list.forEach(t=> rows.push([
+    t.title, t.category, t.status, t.urgency, t.impact,
+    t.deadline || '', t.completed_at ? fmtDate(t.completed_at) : '', fmtDate(t.created_at)
+  ]));
+  const csv = rows.map(r=> r.map(v=> `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const url = URL.createObjectURL(new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8;' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `DoWork-summary-${homeYear}-${homeRange}-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast('ดาวน์โหลดสรุปแล้ว 📄');
+}
+
+// ข้อความกำหนดส่งของลูทีน (ข้อมูลมาจาก routine.js ผ่าน window.DWRoutine)
+function rtWhen(s){
+  if(s.days < 0) return `เลย ${-s.days} วัน`;
+  if(s.days === 0) return 'วันนี้';
+  const mon = d => new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay()+6)%7)).getTime();
+  return mon(s.due) === mon(new Date())
+    ? s.due.toLocaleDateString('th-TH',{weekday:'long'}).replace('วัน','') + 'นี้'
+    : `อีก ${s.days} วัน`;
+}
+
 // ---------- RENDER: HOME (แทนของเดิม) ----------
 function renderHome(){
   const el = $('#home-view');
+  const nowD = new Date();
+  const minY = 2026, maxY = Math.max(minY, nowD.getFullYear());
+  homeYear = Math.min(maxY, Math.max(minY, homeYear));
+  const per = homePeriod();
+  const isPast = per.e <= nowD;
+  const asOf = isPast ? per.e : nowD;
+
   const counted = tasksCache.filter(t=>t.status !== HOLD);
   const held = tasksCache.length - counted.length;
-  const live = counted.filter(t=>t.status !== 'เสร็จแล้ว');
-  const rangeStart = getRangeStart();
-  const completedInRange = counted.filter(t=> t.status === 'เสร็จแล้ว' && t.completed_at && (!rangeStart || new Date(t.completed_at) >= rangeStart));
+  const live = counted.filter(t=>!ovIsDone(t));                       // ตอนนี้
+  const openAsOf = counted.filter(t=> new Date(t.created_at) < asOf && !(ovIsDone(t) && ovDoneDate(t) <= asOf)).length;
+  const doneN = ovDoneIn(counted, per.s, per.e);
+  const kpi = computeKpis(per);
 
-  const soon = live.filter(t=> t.deadline && daysUntil(t.deadline) <= 5)
-                   .sort((a,b)=> new Date(a.deadline) - new Date(b.deadline));
+  const soon = live.filter(t=> t.deadline && daysUntil(t.deadline) <= 5);
   const lateN = live.filter(isOverdue).length;
-  const delta = computePeriodDelta();
-  const kpi = computeKpis();
-  const today = new Date().toLocaleDateString('th-TH',{weekday:'long', day:'numeric', month:'long'});
+  const today = nowD.toLocaleDateString('th-TH',{weekday:'long', day:'numeric', month:'long'});
 
-  const deltaHtml = delta ? `
-    <div class="stat-delta ${delta.delta>0?'up':delta.delta<0?'down':'flat'}">
-      ${delta.delta>0?'▲':delta.delta<0?'▼':'―'} ${Math.abs(delta.delta)}% จาก${homeRange==='month'?'เดือนก่อน':'ไตรมาสก่อน'}
-    </div>` : '';
+  // เทียบช่วงก่อนหน้า (ไม่มีเมื่อเลือก "ทั้งหมด")
+  let deltaHtml = '';
+  if(homeRange !== 'all'){
+    const n = homeRange === 'month' ? 1 : 3;
+    const prevN = ovDoneIn(counted, new Date(per.s.getFullYear(), per.s.getMonth()-n, 1), per.s);
+    const dl = prevN === 0 ? (doneN > 0 ? 100 : 0) : Math.round((doneN - prevN) / prevN * 100);
+    deltaHtml = `<div class="stat-delta ${dl>0?'up':dl<0?'down':'flat'}">${dl>0?'▲':dl<0?'▼':'―'} ${Math.abs(dl)}% จาก${homeRange==='month'?'เดือนก่อน':'ไตรมาสก่อน'}</div>`;
+  }
 
-  const soonHtml = soon.length ? `
+  // ลูทีน (จาก routine.js)
+  const RT = window.DWRoutine;
+  const rtAct = RT ? RT.active() : [];
+  const rtDone = RT ? rtAct.filter(r=>RT.isDone(r)).length : 0;
+  const rtSoon = RT ? rtAct.filter(r=>!RT.isDone(r)).map(r=>({ r, s:RT.st(r) })).filter(x=>x.s.state==='overdue' || x.s.state==='soon') : [];
+  const rows = [
+    ...soon.map(t=>({ kind:'task', id:t.id, title:t.title, cat:t.category, color:colorForCategory(t.category), days:daysUntil(t.deadline), when:deadlineText(t) })),
+    ...rtSoon.map(({r,s})=>({ kind:'routine', id:r.id, title:'ลูทีน: '+r.title, cat:'ลูทีน', color:'#2F7A3B', days:s.days, when:rtWhen(s) }))
+  ].sort((a,b)=>a.days-b.days);
+  const rtCard = !RT ? '' : (rtAct.length
+    ? `<div class="stat-card accent-mint" id="rt-card" style="cursor:pointer;"><div class="stat-num">${rtDone}/${rtAct.length}</div><div class="stat-label">ลูทีนรอบนี้</div><div class="bar-track" style="margin-top:8px;"><div class="bar-fill" style="width:${Math.round(rtDone/rtAct.length*100)}%;background:var(--mint);"></div></div></div>`
+    : `<div class="stat-card accent-mint" id="rt-card" style="cursor:pointer;"><div class="stat-num">–</div><div class="stat-label">ลูทีน</div><div class="stat-sub">ยังไม่มีลูทีน</div></div>`);
+
+  const soonHtml = rows.length ? `
     <div class="panel soon-panel">
       <h3>ใกล้ครบกำหนด</h3>
-      ${soon.map(t=>`
-        <div class="soon-row" data-id="${t.id}">
-          <button type="button" class="row-check" data-check="${t.id}" title="ทำเสร็จ" aria-label="ทำเสร็จ"></button>
-          <span class="mtitle">${escapeHtml(t.title)}</span>
-          <span class="tag tag-cat" style="background:${colorForCategory(t.category)}22;color:${colorForCategory(t.category)};">${escapeHtml(t.category)}</span>
-          <span class="soon-when ${daysUntil(t.deadline) <= 0 ? 'hot' : ''}">${deadlineText(t)}</span>
+      ${rows.map(x=>`
+        <div class="soon-row" data-kind="${x.kind}" data-id="${x.id}">
+          <button type="button" class="row-check" title="ทำเสร็จ" aria-label="ทำเสร็จ"></button>
+          <span class="mtitle">${escapeHtml(x.title)}</span>
+          <span class="tag tag-cat" style="background:${x.color}22;color:${x.color};">${escapeHtml(x.cat)}</span>
+          <span class="soon-when ${x.days <= 0 ? 'hot' : ''}">${x.when}</span>
         </div>`).join('')}
     </div>` : '';
 
   const avgTxt = kpi.avg == null ? '–' : (Math.round(kpi.avg * 10) / 10).toString();
+  const yearOpts = Array.from({ length:maxY - minY + 1 }, (_,i)=> minY + i)
+    .map(y=>`<option value="${y}" ${y===homeYear?'selected':''}>${y}</option>`).join('');
 
   el.innerHTML = `
     <div class="view-header">
       <div><h1>วันนี้ต้องทำอะไรบ้าง</h1><div class="view-sub">${userProfile.name ? 'สวัสดี '+escapeHtml(userProfile.name)+' · ' : ''}${escapeHtml(today)} · ค้างอยู่ ${live.length} งาน</div></div>
       <div class="header-actions">
+        <select id="year-select" class="year-select" aria-label="ปี">${yearOpts}</select>
         <div class="range-toggle" id="range-toggle">
           <button data-r="month" class="${homeRange==='month'?'active':''}">เดือนนี้</button>
           <button data-r="quarter" class="${homeRange==='quarter'?'active':''}">ไตรมาสนี้</button>
@@ -246,33 +296,30 @@ function renderHome(){
 
     <div class="stat-grid">
       <div class="stat-card">
-        <div class="stat-num">${live.length}</div><div class="stat-label">งานค้าง</div>
-        <div class="stat-sub">${held ? 'ไม่รวมพักไว้ '+held+' งาน' : 'ยังไม่มีงานที่พักไว้'}</div>
+        <div class="stat-num">${openAsOf}</div><div class="stat-label">งานค้าง</div>
+        <div class="stat-sub">${isPast ? 'ณ สิ้นช่วงที่เลือก' : (held ? 'ไม่รวมพักไว้ '+held+' งาน' : 'ยังไม่มีงานที่พักไว้')}</div>
       </div>
       <div class="stat-card ${lateN?'accent-coral':''}">
         <div class="stat-num">${soon.length}</div><div class="stat-label">ใกล้ครบกำหนด / เลยกำหนด</div>
         <div class="stat-sub">${lateN ? 'เลยกำหนด '+lateN+' งาน' : 'ไม่มีงานเลยกำหนด'}</div>
       </div>
       <div class="stat-card accent-mint">
-        <div class="stat-num">${completedInRange.length}</div><div class="stat-label">เสร็จ (ช่วงที่เลือก)</div>
+        <div class="stat-num">${doneN}</div><div class="stat-label">เสร็จ (ช่วงที่เลือก)</div>
         ${deltaHtml}
       </div>
+      ${rtCard}
     </div>
 
     ${soonHtml}
 
     <div class="ov-grid">
-      <div class="panel">
-        <div class="ov-head">
-          <h3>ภาพรวมงานรายเดือน</h3>
-          <div class="ov-toggle" id="ov-toggle">
-            ${[3,6,12].map(n=>`<button data-n="${n}" class="${homeTrendMonths===n?'on':''}">${n} เดือน</button>`).join('')}
-          </div>
-        </div>
+      <div class="panel ov-panel">
+        <h3>ภาพรวมงานรายเดือน</h3>
         <div class="ov-legend">
-          <span><i style="background:#4A74D0"></i>งานใหม่</span>
-          <span><i style="background:#5FB46A"></i>เสร็จ</span>
-          <span><i class="line"></i>ยกไปเดือนถัดไป (เดือนนี้ = คงเหลือตอนนี้)</span>
+          <span><i style="background:${OV_COLOR.carry}"></i>ยกมาจากเดือนก่อน</span>
+          <span><i style="background:${OV_COLOR.added}"></i>เพิ่มเดือนนี้</span>
+          <span><i style="background:${OV_COLOR.done}"></i>เสร็จ</span>
+          <span class="hint">· แท่งซ้าย = งานค้างทั้งหมดในเดือน (ตัวเลขบนสุดคือยอดรวม)</span>
         </div>
         <div class="ov-chart"><canvas id="overview-chart"></canvas></div>
       </div>
@@ -280,45 +327,41 @@ function renderHome(){
       <div class="panel">
         <h3>ตัวชี้วัด</h3>
         <div class="kpi">
-          <div class="kpi-label">ส่งตรงเวลา</div>
-          <div class="kpi-big">${kpi.rate == null ? '–' : kpi.rate + '%'}${kpi.total ? `<small>· ${kpi.onTime}/${kpi.total} งาน</small>` : ''}</div>
-          <div class="kpi-bar"><i style="width:${kpi.rate || 0}%"></i></div>
+          <div class="kpi-label">งานที่เสร็จเทียบกับงานทั้งหมด</div>
+          <div class="kpi-big">${kpi.pct == null ? '–' : kpi.pct + '%'}${kpi.total ? `<small>· เสร็จ ${kpi.done} จาก ${kpi.total} งาน</small>` : ''}</div>
+          <div class="kpi-bar"><i style="width:${kpi.pct || 0}%"></i></div>
+          <div class="kpi-sub">งานทั้งหมด ${kpi.total} · เสร็จ ${kpi.done} · ยังไม่เสร็จ ${Math.max(0, kpi.total - kpi.done)}</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">เวลาเฉลี่ยที่ใช้ปิดงาน</div>
           <div class="kpi-big">${avgTxt}${kpi.avg == null ? '' : '<small>วัน</small>'}</div>
-          <div class="kpi-sub">จากงานที่เสร็จใน 6 เดือนล่าสุด</div>
+          <div class="kpi-sub">จากงานที่เสร็จในช่วงที่เลือก</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">งานค้างที่อายุเกิน 30 วัน</div>
           <div class="kpi-big ${kpi.stale.length ? 'red' : ''}">${kpi.stale.length}<small>งาน</small></div>
+          ${isPast ? '<div class="kpi-sub">นับ ณ สิ้นช่วงที่เลือก</div>' : ''}
           ${kpi.stale.length ? '<button type="button" class="kpi-link" id="stale-detail">รายละเอียด ›</button>' : ''}
         </div>
       </div>
     </div>
   `;
 
+  $('#year-select').addEventListener('change', (e)=>{ homeYear = parseInt(e.target.value, 10); renderHome(); });
   $('#range-toggle').addEventListener('click', (e)=>{
     if(e.target.tagName !== 'BUTTON') return;
     homeRange = e.target.dataset.r;
     renderHome();
   });
-  $('#ov-toggle').addEventListener('click', (e)=>{
-    if(e.target.tagName !== 'BUTTON') return;
-    homeTrendMonths = parseInt(e.target.dataset.n, 10);
-    $all('#ov-toggle button').forEach(b=>b.classList.toggle('on', b === e.target));
-    renderOverviewChart();
-  });
-  $all('.soon-row[data-id]').forEach(it=> it.addEventListener('click', (e)=>{
-    if(e.target.closest('.row-check')) return;
+  $all('.soon-row').forEach(it=> it.addEventListener('click', (e)=>{
+    const chk = e.target.closest('.row-check');
+    if(it.dataset.kind === 'routine'){ if(chk) RT.toggle(it.dataset.id); else RT.go(); return; }
+    if(chk){ setTaskStatus(it.dataset.id, 'เสร็จแล้ว'); return; }
     switchView('work'); setTimeout(()=>openTaskModal(it.dataset.id), 50);
   }));
-  $all('.row-check').forEach(b=> b.addEventListener('click', (e)=>{
-    e.stopPropagation();
-    setTaskStatus(b.dataset.check, 'เสร็จแล้ว');
-  }));
+  const rc = $('#rt-card'); if(rc) rc.addEventListener('click', RT.go);
   const sd = $('#stale-detail');
-  if(sd) sd.addEventListener('click', ()=> showStaleTasks(kpi.stale));
+  if(sd) sd.addEventListener('click', ()=> showStaleTasks(kpi.stale, kpi.asOf));
 
   const qaTitle = $('#qa-title');
   const doQuickAdd = ()=> quickAddTask(qaTitle.value, $('#qa-cat').value);
@@ -326,5 +369,5 @@ function renderHome(){
   qaTitle.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); doQuickAdd(); } });
   $('#export-csv-btn').addEventListener('click', exportSummaryCSV);
 
-  renderOverviewChart();
+  renderOverviewChart(per);
 }
