@@ -4,11 +4,23 @@
 
 let homeYear = new Date().getFullYear();
 let homeOverviewChart = null;
-const OV_COLOR = { carry:'#F2994A', added:'#4A74D0', done:'#5FB46A' };
+const OV_COLOR = { carry:'#FFC53D', added:'#4A74D0', done:'#5FB46A' };
 
 (function injectHomeCss(){
   const st = document.createElement('style');
   st.textContent = `
+  /* ---------- ธีม dropdown ทั้งแอป ---------- */
+  select:not([multiple]){
+    -webkit-appearance:none;appearance:none;cursor:pointer;font-family:var(--font-body);font-weight:600;color:var(--navy-deep);
+    padding-right:30px !important;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%232B3F6B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+    background-repeat:no-repeat !important;background-position:right 12px center !important;background-size:12px 8px !important;
+    transition:background-color .12s,box-shadow .12s;
+  }
+  select:not([multiple]):hover:not(:disabled){background-color:var(--yellow-soft) !important;}
+  select:not([multiple]):focus{box-shadow:0 0 0 3px rgba(255,197,61,.6);}
+  select:disabled{opacity:.55;cursor:not-allowed;}
+  select option{background:#fff;color:var(--ink);font-weight:600;}
   .year-select{padding:7px 14px;border-radius:999px;border:1.5px solid var(--navy);background:#fff;font-weight:700;font-size:13px;color:var(--navy-deep);outline:none;}
   .soon-panel{margin-bottom:16px;}
   .soon-row{display:flex;align-items:center;gap:14px;padding:11px 4px;cursor:pointer;}
@@ -60,7 +72,7 @@ function computeOverview(per){
   const cur = b.findIndex(x => now >= x.s && now < x.e);
   return {
     cur,
-    labels: b.map((x,i) => [x.s.toLocaleDateString('th-TH',{month:'short'}) + (i === cur ? ' (ตอนนี้)' : ''), String(x.s.getFullYear())]),
+    labels: b.map(x => [x.s.toLocaleDateString('th-TH',{month:'short'}), String(x.s.getFullYear())]),
     // ยกมา = ค้างอยู่ ณ ต้นเดือน · เพิ่ม = สร้างในเดือน · เสร็จ = เสร็จในเดือน
     carry: b.map(x => tasks.filter(t => new Date(t.created_at) < x.s && !(ovIsDone(t) && ovDoneDate(t) < x.s)).length),
     added: b.map(x => tasks.filter(t => { const c = new Date(t.created_at); return c >= x.s && c < x.e; }).length),
@@ -110,10 +122,10 @@ const overviewPlugin = {
       // ตัวเลขในแต่ละช่วงสีของแท่งค้าง
       [0,1].forEach(k => {
         const v = ds[k].data[i], el = m[k].data[i], h = el.base - el.y;
-        if(v > 0 && h >= 16){ ctx.fillStyle = '#fff'; ctx.fillText(v, el.x, el.y + h/2); }
+        if(v > 0 && h >= 16){ ctx.fillStyle = k === 1 ? '#2B3F6B' : '#fff'; ctx.fillText(v, el.x, el.y + h/2); }
       });
       // ยอดรวมแท่งค้าง
-      const total = ds[0].data[i] + ds[1].data[i];
+      const total = ds[0].data[i] + ds[1].data[i];  // 0 = เพิ่มเดือนนี้ (ล่าง), 1 = ยกมา (บน)
       if(total > 0){
         const top = Math.min(...[0,1].filter(k => ds[k].data[i] > 0).map(k => m[k].data[i].y));
         ctx.fillStyle = '#26365E'; ctx.fillText(total, m[1].data[i].x, top - 10);
@@ -139,8 +151,8 @@ function renderOverviewChart(per){
     data: {
       labels: d.labels,
       datasets: [
-        { ...bar, label:'ยกมาจากเดือนก่อน', data:d.carry, backgroundColor:OV_COLOR.carry, stack:'open' },
-        { ...bar, label:'เพิ่มเดือนนี้', data:d.added, backgroundColor:OV_COLOR.added, stack:'open', borderRadius:rad },
+        { ...bar, label:'เพิ่มเดือนนี้', data:d.added, backgroundColor:OV_COLOR.added, stack:'open' },
+        { ...bar, label:'ยกมาจากเดือนก่อน', data:d.carry, backgroundColor:OV_COLOR.carry, stack:'open', borderRadius:rad },
         { ...bar, label:'เสร็จ', data:d.done, backgroundColor:OV_COLOR.done, stack:'done', borderRadius:rad }
       ]
     },
